@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Get,
   HttpException,
   HttpStatus,
   Post,
@@ -71,5 +72,14 @@ export class AuthController {
         HttpStatus.BAD_REQUEST
       );
     }
+  }
+
+  @Get("/logout")
+  async logout(@Res({ passthrough: true }) res: Response) {
+    res.clearCookie("accessToken");
+    return {
+      succeeded: true,
+      message: "User logged out successfully",
+    };
   }
 }
