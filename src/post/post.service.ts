@@ -44,6 +44,16 @@ export class PostService {
     if (!post) {
       throw new BadRequestException("Post not found");
     }
+    if (post.media && post.media.length > 0) {
+      const deletePromises = post.media.map((imgUrl) => {
+        // Extract publicId from URL (Cloudinary path)
+        const parts = imgUrl.split("/");
+        const fileName = parts[parts.length - 1];
+        const publicId = `posts/${fileName.split(".")[0]}`;
+        return this.cloudinaryService.deleteFromCloudinary(publicId);
+      });
+      await Promise.all(deletePromises);
+    }
     const isOwner = this.checkPostOwner(post.author, req.user._id);
     if (!isOwner) {
       throw new ForbiddenException("You are not owner of this post");
