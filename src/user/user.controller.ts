@@ -2,11 +2,13 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Get,
   HttpException,
   HttpStatus,
   Param,
   Post,
   Put,
+  Query,
   Req,
   UploadedFile,
   UseGuards,
@@ -78,6 +80,28 @@ export class UserController {
         req
       );
       return { succeeded: true, message: message, data: result };
+    } catch (error) {
+      throw new HttpException(
+        {
+          statusCode: HttpStatus.BAD_REQUEST,
+          message: error.message || "Registration failed",
+          succeeded: false,
+        },
+        HttpStatus.BAD_REQUEST
+      );
+    }
+  }
+
+  @UseGuards(AuthGuard)
+  @Get("search-user")
+  async searchUser(@Query("name") name: string) {
+    try {
+      const users = await this.userService.searchUsers(name);
+      return {
+        succeeded: true,
+        message: "users list fetched successfully",
+        data: users,
+      };
     } catch (error) {
       throw new HttpException(
         {

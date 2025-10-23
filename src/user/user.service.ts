@@ -118,4 +118,11 @@ export class UserService {
       return { result, message: `You follow ${targetUser?.name}` };
     }
   }
+
+  async searchUsers(name) {
+    const users = await this.userModel.find({
+      name: { $regex: name, $options: "i" },
+    });
+    return users;
+  }
 }
