@@ -17,6 +17,7 @@ import { AuthGuard } from "src/auth/guard/auth.guard";
 import type { Request } from "express";
 import { FilesInterceptor } from "@nestjs/platform-express";
 import multer from "multer";
+import { SharePostDTO } from "./dto/sharePost.dto";
 
 @Controller("post")
 export class PostController {
@@ -73,6 +74,32 @@ export class PostController {
       return {
         succeeded: true,
         message: "Post deleted successfully",
+      };
+    } catch (error) {
+      throw new HttpException(
+        {
+          statusCode: HttpStatus.BAD_REQUEST,
+          message: error.message || "Registration failed",
+          succeeded: false,
+        },
+        HttpStatus.BAD_REQUEST
+      );
+    }
+  }
+
+  @UseGuards(AuthGuard)
+  @Post("share-post/:postId")
+  async sharePost(
+    @Param("postId") postId: string,
+    @Body() requestBody: SharePostDTO,
+    @Req() req: Request
+  ) {
+    try {
+      const result = await this.postService.sharePost(postId, requestBody, req);
+      return {
+        succeeded: true,
+        message: "Post shared successfully",
+        data: result,
       };
     } catch (error) {
       throw new HttpException(

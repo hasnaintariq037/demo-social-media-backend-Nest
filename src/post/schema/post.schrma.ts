@@ -20,9 +20,6 @@ export class Post extends Document {
   @Prop({ type: [{ type: Types.ObjectId, ref: "User" }], default: [] })
   shares: Types.ObjectId[];
 
-  @Prop()
-  shareThoughts: string;
-
   @Prop({ type: Types.ObjectId, ref: "Post" })
   originalPost: Types.ObjectId;
 }

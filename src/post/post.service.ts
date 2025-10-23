@@ -9,6 +9,7 @@ import { Post } from "./schema/post.schrma";
 import { Model } from "mongoose";
 import { Request } from "express";
 import { CloudinaryService } from "src/services/cloudinary/cloudinary.service";
+import { SharePostDTO } from "./dto/sharePost.dto";
 
 @Injectable()
 export class PostService {
@@ -59,6 +60,22 @@ export class PostService {
       throw new ForbiddenException("You are not owner of this post");
     }
     return await this.postModel.deleteOne({ _id: postId });
+  }
+
+  async sharePost(postId: string, requestBody: SharePostDTO, req: Request) {
+    const post = await this.postModel.findById(postId);
+    if (!post) {
+      throw new BadRequestException("Post not found");
+    }
+    const sharedPost = await this.postModel.create({
+      media: [],
+      likes: [],
+      shares: [],
+      content: requestBody.content,
+      originalPost: post._id,
+      author: req.user._id,
+    });
+    return sharedPost;
   }
 
   private checkPostOwner(author, userId) {
