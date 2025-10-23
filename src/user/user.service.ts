@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { User } from "./schema/user.schema";
-import { Model } from "mongoose";
+import mongoose, { Model } from "mongoose";
 import { JwtServiceService } from "src/services/jwt-service/jwt-service.service";
 import { UpdateProfileDto } from "./dto/updateProfile.dto";
 import { Request } from "express";
@@ -71,5 +71,51 @@ export class UserService {
     const updatedUser = await user.save({ validateBeforeSave: false });
     const { password, ...userWithoutPassword } = updatedUser.toObject(); // converting into lain javascript object
     return userWithoutPassword;
+  }
+
+  async followUser(targetUserId, req: Request) {
+    // Convert current user ID to ObjectId
+    const currentUserId = new mongoose.Types.ObjectId(req.user._id as string);
+    let currentUser = req.user;
+
+    if (currentUserId.equals(targetUserId)) {
+      throw new BadRequestException("You cannot follow yourself");
+    }
+
+    const targetUser = await this.userModel.findById(targetUserId);
+    if (!targetUser)
+      throw new BadRequestException("You cannot follow yourself");
+
+    // Initialize arrays if undefined
+    targetUser.followers = targetUser.followers || [];
+    currentUser.following = currentUser.following || [];
+
+    const alreadyFollowing = targetUser.followers.some((f) =>
+      f.equals(currentUserId)
+    );
+
+    if (alreadyFollowing) {
+      // UNFOLLOW
+      targetUser.followers = targetUser.followers.filter(
+        (f) => !f.equals(currentUserId)
+      );
+      currentUser.following = currentUser.following.filter(
+        (f) => !f.equals(targetUserId)
+      );
+
+      await targetUser.save({ validateBeforeSave: false });
+      const result = await currentUser.save({ validateBeforeSave: false });
+
+      return { result, message: `You unfollow ${targetUser?.name}` };
+    } else {
+      // FOLLOW
+      targetUser.followers.push(currentUserId);
+      currentUser.following.push(new mongoose.Types.ObjectId(targetUserId));
+
+      await targetUser.save({ validateBeforeSave: false });
+      const result = await currentUser.save({ validateBeforeSave: false });
+
+      return { result, message: `You follow ${targetUser?.name}` };
+    }
   }
 }
