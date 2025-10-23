@@ -78,6 +78,34 @@ export class PostService {
     return sharedPost;
   }
 
+  async likePost(postId: string, req: Request) {
+    const post = await this.postModel.findById(postId);
+    if (!post) {
+      throw new BadRequestException("Post not found");
+    }
+    post.likes = post.likes || [];
+
+    let message = "";
+    const userId = req.user._id;
+
+    if (post.likes.some((id) => id.equals(userId))) {
+      // User already liked → unlike
+      post.likes = post.likes.filter((id) => !id.equals(userId));
+      message = "Unliked";
+    } else {
+      // Like the post
+      post.likes.push(userId);
+      message = "Liked";
+    }
+
+    const updatedPost = await post.save({ validateBeforeSave: false });
+
+    return {
+      message,
+      updatedPost,
+    };
+  }
+
   private checkPostOwner(author, userId) {
     if (author.equals(userId)) {
       return true;

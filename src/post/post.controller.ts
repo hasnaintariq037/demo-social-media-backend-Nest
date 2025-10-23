@@ -112,4 +112,29 @@ export class PostController {
       );
     }
   }
+
+  @UseGuards(AuthGuard)
+  @Post("like-post/:postId")
+  async likePost(@Param("postId") postId: string, @Req() req: Request) {
+    try {
+      const { message, updatedPost } = await this.postService.likePost(
+        postId,
+        req
+      );
+      return {
+        succeeded: true,
+        message: `You ${message} the post`,
+        data: updatedPost,
+      };
+    } catch (error) {
+      throw new HttpException(
+        {
+          statusCode: HttpStatus.BAD_REQUEST,
+          message: error.message || "Registration failed",
+          succeeded: false,
+        },
+        HttpStatus.BAD_REQUEST
+      );
+    }
+  }
 }
