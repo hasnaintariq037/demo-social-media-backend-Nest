@@ -27,4 +27,13 @@ export class UserService {
     const user = await this.userModel.findOne({ email });
     return user;
   }
+
+  async findUserByToken(token) {
+    const user = await this.userModel.findOne({
+      resetToken: token,
+      resetPasswordExpires: { $gt: Date.now() },
+    });
+
+    return user;
+  }
 }

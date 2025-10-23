@@ -7,6 +7,7 @@ import { ForgotPasswordDTO } from "./dto/forPassword.dto";
 import { UserService } from "src/user/user.service";
 import { JwtServiceService } from "src/services/jwt-service/jwt-service.service";
 import { NodemailerService } from "src/services/nodemailer/nodemailer.service";
+import { resetPasswordDto } from "./dto/resetPassword.dto";
 
 @Injectable()
 export class AuthService {
@@ -77,6 +78,23 @@ export class AuthService {
     });
 
     return { message: "Reset password email sent successfully" };
+  }
+
+  async resetPassword(requestData: resetPasswordDto, token: string) {
+    const { password } = requestData;
+    const resetPasswordToken = crypto
+      .createHash("sha256")
+      .update(token)
+      .digest("hex");
+
+    const user = await this.userService.findUserByToken(resetPasswordToken);
+    if (!user) throw new BadRequestException("Invalid or expired token");
+
+    user.password = password;
+    user.resetToken = undefined;
+    user.resetPasswordExpires = undefined;
+    await user.save({ validateBeforeSave: false });
+    return true;
   }
 
   /** Utility: Generate Secure Reset Token */

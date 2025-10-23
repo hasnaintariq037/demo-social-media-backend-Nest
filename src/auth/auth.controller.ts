@@ -4,6 +4,7 @@ import {
   Get,
   HttpException,
   HttpStatus,
+  Param,
   Post,
   Res,
 } from "@nestjs/common";
@@ -12,6 +13,7 @@ import { RegisterDTO } from "./dto/register.dto";
 import { AuthService } from "./auth.service";
 import { LoginDTO } from "./dto/login.dto";
 import { ForgotPasswordDTO } from "./dto/forPassword.dto";
+import { resetPasswordDto } from "./dto/resetPassword.dto";
 
 @Controller("auth")
 export class AuthController {
@@ -90,6 +92,29 @@ export class AuthController {
       await this.authService.forgotPassword(requestBody);
       return {
         message: "Password reset link sent to your email",
+        succeeded: true,
+      };
+    } catch (error) {
+      throw new HttpException(
+        {
+          statusCode: HttpStatus.BAD_REQUEST,
+          message: error.message || "Registration failed",
+          succeeded: false,
+        },
+        HttpStatus.BAD_REQUEST
+      );
+    }
+  }
+
+  @Post("/reset-password/:token")
+  async resetPassword(
+    @Body() requestBody: resetPasswordDto,
+    @Param("token") token: string
+  ) {
+    try {
+      await this.authService.resetPassword(requestBody, token);
+      return {
+        message: "password updated successfully",
         succeeded: true,
       };
     } catch (error) {
