@@ -1,7 +1,7 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-import { Document, Types } from "mongoose";
-import crypto from "crypto";
+import { Document, HydratedDocument, Types } from "mongoose";
 
+export type UserDocument = HydratedDocument<User>;
 @Schema({ timestamps: true })
 export class User extends Document {
   @Prop({ required: true })

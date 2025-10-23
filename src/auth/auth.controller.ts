@@ -13,7 +13,7 @@ import { RegisterDTO } from "./dto/register.dto";
 import { AuthService } from "./auth.service";
 import { LoginDTO } from "./dto/login.dto";
 import { ForgotPasswordDTO } from "./dto/forPassword.dto";
-import { resetPasswordDto } from "./dto/resetPassword.dto";
+import { ResetPasswordDto } from "./dto/resetPassword.dto";
 
 @Controller("auth")
 export class AuthController {
@@ -108,7 +108,7 @@ export class AuthController {
 
   @Post("/reset-password/:token")
   async resetPassword(
-    @Body() requestBody: resetPasswordDto,
+    @Body() requestBody: ResetPasswordDto,
     @Param("token") token: string
   ) {
     try {
