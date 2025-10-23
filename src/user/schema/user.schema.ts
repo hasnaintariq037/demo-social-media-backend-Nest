@@ -1,5 +1,6 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { Document, Types } from "mongoose";
+import crypto from "crypto";
 
 @Schema({ timestamps: true })
 export class User extends Document {

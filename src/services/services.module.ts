@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { JwtServiceService } from "./jwt-service/jwt-service.service";
 import { JwtModule } from "@nestjs/jwt";
 import { ConfigModule, ConfigService } from "@nestjs/config";
+import { NodemailerService } from "./nodemailer/nodemailer.service";
 
 @Module({
   imports: [
@@ -14,7 +15,7 @@ import { ConfigModule, ConfigService } from "@nestjs/config";
       inject: [ConfigService],
     }),
   ],
-  providers: [JwtServiceService],
-  exports: [JwtServiceService],
+  providers: [JwtServiceService, NodemailerService],
+  exports: [JwtServiceService, NodemailerService],
 })
 export class ServicesModule {}

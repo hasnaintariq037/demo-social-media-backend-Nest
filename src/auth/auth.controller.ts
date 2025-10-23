@@ -11,6 +11,7 @@ import type { Response } from "express";
 import { RegisterDTO } from "./dto/register.dto";
 import { AuthService } from "./auth.service";
 import { LoginDTO } from "./dto/login.dto";
+import { ForgotPasswordDTO } from "./dto/forPassword.dto";
 
 @Controller("auth")
 export class AuthController {
@@ -81,5 +82,25 @@ export class AuthController {
       succeeded: true,
       message: "User logged out successfully",
     };
+  }
+
+  @Post("/forgot-password")
+  async forgotPassword(@Body() requestBody: ForgotPasswordDTO) {
+    try {
+      await this.authService.forgotPassword(requestBody);
+      return {
+        message: "Password reset link sent to your email",
+        succeeded: true,
+      };
+    } catch (error) {
+      throw new HttpException(
+        {
+          statusCode: HttpStatus.BAD_REQUEST,
+          message: error.message || "Registration failed",
+          succeeded: false,
+        },
+        HttpStatus.BAD_REQUEST
+      );
+    }
   }
 }
