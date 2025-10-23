@@ -67,6 +67,8 @@ export class PostService {
     if (!post) {
       throw new BadRequestException("Post not found");
     }
+    post.shares.push(req.user._id);
+    await post.save({ validateBeforeSave: false });
     const sharedPost = await this.postModel.create({
       media: [],
       likes: [],
@@ -104,6 +106,72 @@ export class PostService {
       message,
       updatedPost,
     };
+  }
+
+  async getAllPosts(req: Request) {
+    const { isMostLikedPosts, isFollowingPosts, isMostSharedPosts } = req.query;
+    let pipeline: any[] = [];
+    if (isFollowingPosts === "true") {
+      pipeline.push({
+        $match: { author: { $in: req.user.following || [] } },
+      });
+    }
+    // Add counts for likes and shares
+    pipeline.push({
+      $addFields: {
+        likesCount: { $size: { $ifNull: ["$likes", []] } },
+        sharesCount: { $size: { $ifNull: ["$shares", []] } },
+      },
+    });
+
+    if (isMostLikedPosts) {
+      pipeline.push({ $match: { likesCount: { $gt: 0 } } });
+      pipeline.push({ $sort: { likesCount: -1, createdAt: -1 } });
+    }
+
+    if (isMostSharedPosts) {
+      pipeline.push({ $match: { sharesCount: { $gt: 0 } } });
+      pipeline.push({ $sort: { sharesCount: -1, createdAt: -1 } });
+    }
+
+    if (!isMostLikedPosts && !isMostSharedPosts) {
+      pipeline.push({ $sort: { createdAt: -1 } });
+    }
+
+    // Populate author
+    pipeline.push({
+      $lookup: {
+        from: "users",
+        localField: "author",
+        foreignField: "_id",
+        as: "author",
+      },
+    });
+    pipeline.push({ $unwind: "$author" });
+
+    // Populate original post and its author
+    pipeline.push({
+      $lookup: {
+        from: "posts",
+        localField: "originalPost",
+        foreignField: "_id",
+        as: "originalPost",
+      },
+    });
+    pipeline.push({
+      $unwind: { path: "$originalPost", preserveNullAndEmptyArrays: true },
+    });
+    pipeline.push({
+      $lookup: {
+        from: "users",
+        localField: "originalPost.author",
+        foreignField: "_id",
+        as: "originalPost.author",
+      },
+    });
+
+    const posts = await this.postModel.aggregate(pipeline);
+    return posts;
   }
 
   private checkPostOwner(author, userId) {

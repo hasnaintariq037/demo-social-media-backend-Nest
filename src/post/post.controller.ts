@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Delete,
+  Get,
   HttpException,
   HttpStatus,
   Param,
@@ -125,6 +126,28 @@ export class PostController {
         succeeded: true,
         message: `You ${message} the post`,
         data: updatedPost,
+      };
+    } catch (error) {
+      throw new HttpException(
+        {
+          statusCode: HttpStatus.BAD_REQUEST,
+          message: error.message || "Registration failed",
+          succeeded: false,
+        },
+        HttpStatus.BAD_REQUEST
+      );
+    }
+  }
+
+  @UseGuards(AuthGuard)
+  @Get("getall-posts")
+  async getAllPosts(@Req() req) {
+    try {
+      const posts = await this.postService.getAllPosts(req);
+      return {
+        succeeded: true,
+        message: "Posts fetched successfully",
+        posts,
       };
     } catch (error) {
       throw new HttpException(
