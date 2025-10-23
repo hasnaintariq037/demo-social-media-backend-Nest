@@ -39,6 +39,7 @@ export class UserController {
       }),
     })
   )
+  @UseGuards(AuthGuard)
   @Put("update-profile")
   async updateProfile(
     @Body() requestBody: UpdateProfileDto,

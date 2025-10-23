@@ -1,4 +1,61 @@
-import { Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+} from "@nestjs/common";
+import { CreatePostDTO } from "./dto/createPost.dto";
+import { InjectModel } from "@nestjs/mongoose";
+import { Post } from "./schema/post.schrma";
+import { Model } from "mongoose";
+import { Request } from "express";
+import { CloudinaryService } from "src/services/cloudinary/cloudinary.service";
 
 @Injectable()
-export class PostService {}
+export class PostService {
+  constructor(
+    @InjectModel(Post.name) private postModel: Model<Post>,
+    private readonly cloudinaryService: CloudinaryService
+  ) {}
+
+  async createPost(
+    requestBody: CreatePostDTO,
+    req: Request,
+    files: Express.Multer.File[] | undefined
+  ) {
+    const { content } = requestBody;
+    let imageUrls: string[] = [];
+    if (files && files.length > 0) {
+      const uploadPromises = files.map((file) =>
+        this.cloudinaryService.uploadToCloudinary(file.path, "posts")
+      );
+      const results = await Promise.all(uploadPromises);
+      imageUrls = results.map((r) => r.secure_url);
+    }
+    const createdPost = await this.postModel.create({
+      content,
+      author: req.user._id,
+      media: imageUrls,
+    });
+    return createdPost;
+  }
+
+  async deletePost(postId: string, req: Request) {
+    const post = await this.postModel.findOne({ _id: postId });
+    if (!post) {
+      throw new BadRequestException("Post not found");
+    }
+    const isOwner = this.checkPostOwner(post.author, req.user._id);
+    if (!isOwner) {
+      throw new ForbiddenException("You are not owner of this post");
+    }
+    return await this.postModel.deleteOne({ _id: postId });
+  }
+
+  private checkPostOwner(author, userId) {
+    if (author.equals(userId)) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+}

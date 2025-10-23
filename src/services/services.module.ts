@@ -10,7 +10,7 @@ import { CloudinaryService } from "./cloudinary/cloudinary.service";
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
-        secret: configService.get<string>("JWT_SECRET"), // ✅ from .env
+        secret: configService.get<string>("JWT_SECRET"),
         signOptions: { expiresIn: "7d" },
       }),
       inject: [ConfigService],
