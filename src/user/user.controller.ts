@@ -1,10 +1,7 @@
 import {
-  BadRequestException,
   Body,
   Controller,
   Get,
-  HttpException,
-  HttpStatus,
   Param,
   Post,
   Put,
@@ -20,6 +17,7 @@ import type { Request } from "express";
 import { AuthGuard } from "src/auth/guard/auth.guard";
 import { FileInterceptor } from "@nestjs/platform-express";
 import multer from "multer";
+import { createResponse } from "src/util/response.util";
 
 @Controller("user")
 export class UserController {
@@ -47,28 +45,20 @@ export class UserController {
     @UploadedFile() file: Express.Multer.File
   ) {
     const result = await this.userService.updateProfile(requestBody, req, file);
-    return {
-      succeeded: true,
-      message: "Profile updted successfully",
-      data: result,
-    };
+    return createResponse(result, "Profile updated successfully");
   }
 
   @UseGuards(AuthGuard)
   @Post(":targetUserId")
   async followUser(@Param("targetUserId") targetUser, @Req() req: Request) {
     const { message } = await this.userService.followUser(targetUser, req);
-    return { succeeded: true, message };
+    return createResponse(message);
   }
 
   @UseGuards(AuthGuard)
   @Get()
   async searchUser(@Query("name") name: string) {
     const users = await this.userService.searchUsers(name);
-    return {
-      succeeded: true,
-      message: "users list fetched successfully",
-      data: users,
-    };
+    return createResponse(users, "users list fetched successfully");
   }
 }

@@ -3,8 +3,6 @@ import {
   Controller,
   Delete,
   Get,
-  HttpException,
-  HttpStatus,
   Param,
   Post,
   Req,
@@ -19,6 +17,7 @@ import type { Request } from "express";
 import { FilesInterceptor } from "@nestjs/platform-express";
 import multer from "multer";
 import { SharePostDTO } from "./dto/sharePost.dto";
+import { createResponse } from "src/util/response.util";
 
 @Controller("post")
 export class PostController {
@@ -49,21 +48,14 @@ export class PostController {
       req,
       files
     );
-    return {
-      succeeded: true,
-      message: "Post created successfully",
-      data: createdPost,
-    };
+    return createResponse(createdPost, "Post created successfully");
   }
 
   @UseGuards(AuthGuard)
   @Delete(":postId")
   async deletePost(@Param("postId") postId: string, @Req() req: Request) {
     await this.postService.deletePost(postId, req);
-    return {
-      succeeded: true,
-      message: "Post deleted successfully",
-    };
+    return createResponse("Post deleted successfully");
   }
 
   @UseGuards(AuthGuard)
@@ -74,31 +66,20 @@ export class PostController {
     @Req() req: Request
   ) {
     const result = await this.postService.sharePost(postId, requestBody, req);
-    return {
-      succeeded: true,
-      message: "Post shared successfully",
-      data: result,
-    };
+    return createResponse("Post shared successfully");
   }
 
   @UseGuards(AuthGuard)
   @Post("like-post/:postId")
   async likePost(@Param("postId") postId: string, @Req() req: Request) {
     const message = await this.postService.likePost(postId, req);
-    return {
-      succeeded: true,
-      message: `You ${message} the post`,
-    };
+    return createResponse(`You ${message} the post`);
   }
 
   @UseGuards(AuthGuard)
   @Get()
   async getAllPosts(@Req() req) {
     const posts = await this.postService.getAllPosts(req);
-    return {
-      succeeded: true,
-      message: "Posts fetched successfully",
-      posts,
-    };
+    return createResponse(posts, "Posts fetched successfully");
   }
 }

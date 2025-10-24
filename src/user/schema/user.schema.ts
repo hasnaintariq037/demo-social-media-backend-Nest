@@ -19,12 +19,6 @@ export class User extends Document {
   @Prop({ default: "" })
   bio: string;
 
-  @Prop({ type: [{ type: Types.ObjectId, ref: "User" }], default: [] })
-  followers: Types.ObjectId[];
-
-  @Prop({ type: [{ type: Types.ObjectId, ref: "User" }], default: [] })
-  following: Types.ObjectId[];
-
   @Prop()
   resetToken?: string;
 
