@@ -1,11 +1,19 @@
 export function createResponse<T>(
-  data?: T,
+  dataOrMessage?: T | null,
   message?: string,
   succeeded = true
 ) {
+  if (typeof dataOrMessage === "string") {
+    return {
+      succeeded,
+      message: dataOrMessage,
+      data: null,
+    };
+  }
+
   return {
     succeeded,
     message: message || (succeeded ? "Request successful" : "Request failed"),
-    data: data ?? null,
+    data: dataOrMessage ?? null,
   };
 }

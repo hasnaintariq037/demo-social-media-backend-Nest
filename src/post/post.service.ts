@@ -134,6 +134,7 @@ export class PostService {
         localField: "_id",
         foreignField: "postId",
         as: "likesData",
+        pipeline: [{ $project: { _id: 1 } }],
       },
     });
 
@@ -143,10 +144,10 @@ export class PostService {
         localField: "_id",
         foreignField: "sharedPostId",
         as: "sharesData",
+        pipeline: [{ $project: { _id: 1 } }],
       },
     });
 
-    // Add computed counts
     pipeline.push({
       $addFields: {
         likesCount: { $size: { $ifNull: ["$likesData", []] } },
@@ -154,7 +155,6 @@ export class PostService {
       },
     });
 
-    // Sorting logic
     if (isMostLikedPosts === "true") {
       pipeline.push({ $match: { likesCount: { $gt: 0 } } });
       pipeline.push({ $sort: { likesCount: -1, createdAt: -1 } });
@@ -165,55 +165,57 @@ export class PostService {
       pipeline.push({ $sort: { createdAt: -1 } });
     }
 
-    // Populate author
     pipeline.push({
       $lookup: {
         from: "users",
         localField: "author",
         foreignField: "_id",
         as: "author",
+        pipeline: [{ $project: { _id: 1, name: 1, profilePicture: 1 } }],
       },
     });
     pipeline.push({ $unwind: "$author" });
 
-    // Populate original post and its author
     pipeline.push({
       $lookup: {
         from: "posts",
         localField: "originalPost",
         foreignField: "_id",
         as: "originalPost",
+        pipeline: [
+          {
+            $lookup: {
+              from: "users",
+              localField: "author",
+              foreignField: "_id",
+              as: "author",
+              pipeline: [{ $project: { _id: 1, name: 1, profilePicture: 1 } }],
+            },
+          },
+          { $unwind: { path: "$author", preserveNullAndEmptyArrays: true } },
+          {
+            $project: {
+              _id: 1,
+              content: 1,
+              media: 1,
+              createdAt: 1,
+              author: 1,
+            },
+          },
+        ],
       },
     });
     pipeline.push({
       $unwind: { path: "$originalPost", preserveNullAndEmptyArrays: true },
     });
-    pipeline.push({
-      $lookup: {
-        from: "users",
-        localField: "originalPost.author",
-        foreignField: "_id",
-        as: "originalPost.author",
-      },
-    });
-    pipeline.push({
-      $unwind: {
-        path: "$originalPost.author",
-        preserveNullAndEmptyArrays: true,
-      },
-    });
 
-    // Final projection to clean up output
     pipeline.push({
       $project: {
         "author.password": 0,
         "originalPost.author.password": 0,
       },
     });
-
     const posts = await this.postModel.aggregate(pipeline);
-    console.log(posts, "posts");
-
     return posts;
   }
 
