@@ -6,6 +6,7 @@ import {
   HttpStatus,
 } from "@nestjs/common";
 import { Response } from "express";
+import { CodeTypes } from "../enum/code-types.enum";
 
 @Catch()
 export default class GlobalExceptionFilter implements ExceptionFilter {
@@ -21,7 +22,7 @@ export default class GlobalExceptionFilter implements ExceptionFilter {
     const message =
       exception instanceof HttpException
         ? exception.getResponse()
-        : exception.code === 11000
+        : exception.code === CodeTypes.DUPLICATE_ENTITY_CODE
           ? "Email already exists"
           : exception.message || "Internal server error";
 
