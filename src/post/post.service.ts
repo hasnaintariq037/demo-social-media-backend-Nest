@@ -10,11 +10,13 @@ import { Model } from "mongoose";
 import { Request } from "express";
 import { CloudinaryService } from "src/services/cloudinary/cloudinary.service";
 import { SharePostDTO } from "./dto/sharePost.dto";
+import { Like } from "./schema/like.schema";
 
 @Injectable()
 export class PostService {
   constructor(
     @InjectModel(Post.name) private postModel: Model<Post>,
+    @InjectModel(Like.name) private likeModel: Model<Like>,
     private readonly cloudinaryService: CloudinaryService
   ) {}
 
@@ -81,31 +83,17 @@ export class PostService {
   }
 
   async likePost(postId: string, req: Request) {
-    const post = await this.postModel.findById(postId);
-    if (!post) {
-      throw new BadRequestException("Post not found");
-    }
-    post.likes = post.likes || [];
-
     let message = "";
     const userId = req.user._id;
-
-    if (post.likes.some((id) => id.equals(userId))) {
-      // User already liked → unlike
-      post.likes = post.likes.filter((id) => !id.equals(userId));
+    const isAlreadyliked = await this.likeModel.findOne({ postId });
+    if (isAlreadyliked) {
+      await this.likeModel.deleteOne({ _id: isAlreadyliked._id });
       message = "Unliked";
     } else {
-      // Like the post
-      post.likes.push(userId);
+      await this.likeModel.create({ postId, userId: userId });
       message = "Liked";
     }
-
-    const updatedPost = await post.save({ validateBeforeSave: false });
-
-    return {
-      message,
-      updatedPost,
-    };
+    return message;
   }
 
   async getAllPosts(req: Request) {

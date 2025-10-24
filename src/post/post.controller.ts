@@ -118,14 +118,10 @@ export class PostController {
   @Post("like-post/:postId")
   async likePost(@Param("postId") postId: string, @Req() req: Request) {
     try {
-      const { message, updatedPost } = await this.postService.likePost(
-        postId,
-        req
-      );
+      const message = await this.postService.likePost(postId, req);
       return {
         succeeded: true,
         message: `You ${message} the post`,
-        data: updatedPost,
       };
     } catch (error) {
       throw new HttpException(

@@ -6,10 +6,14 @@ import { Post as post, PostSchema } from "./schema/post.schrma";
 import { AuthModule } from "src/auth/auth.module";
 import { UserModule } from "src/user/user.module";
 import { ServicesModule } from "src/services/services.module";
+import { Like, LikeSchema } from "./schema/like.schema";
 
 @Module({
   imports: [
-    MongooseModule.forFeature([{ name: post.name, schema: PostSchema }]),
+    MongooseModule.forFeature([
+      { name: post.name, schema: PostSchema },
+      { name: Like.name, schema: LikeSchema },
+    ]),
     AuthModule,
     UserModule,
     ServicesModule,
