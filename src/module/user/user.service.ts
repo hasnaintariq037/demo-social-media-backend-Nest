@@ -84,32 +84,39 @@ export class UserService {
       userId: currentUserId,
     });
 
-    if (isAlreadyFollowed) {
-      await Promise.all([
-        this.followerModel.deleteOne({
-          followerId: currentUserId,
-          userId: new mongoose.Types.ObjectId(targetUserId),
-        }),
-        this.followingModel.deleteOne({
-          followingId: new mongoose.Types.ObjectId(targetUserId),
-          userId: currentUserId,
-        }),
-      ]);
-      message = "You unfollowed";
-    } else {
-      await Promise.all([
-        this.followerModel.create({
-          followerId: currentUserId,
-          userId: new mongoose.Types.ObjectId(targetUserId),
-        }),
-        this.followingModel.create({
-          followingId: new mongoose.Types.ObjectId(targetUserId),
-          userId: currentUserId,
-        }),
-      ]);
-      message = "You followed";
+    const session = await mongoose.startSession();
+    try {
+      session.startTransaction();
+      if (isAlreadyFollowed) {
+        await Promise.all([
+          this.followerModel.deleteOne({
+            followerId: currentUserId,
+            userId: new mongoose.Types.ObjectId(targetUserId),
+          }),
+          this.followingModel.deleteOne({
+            followingId: new mongoose.Types.ObjectId(targetUserId),
+            userId: currentUserId,
+          }),
+        ]);
+        message = "You unfollowed";
+      } else {
+        await Promise.all([
+          this.followerModel.create({
+            followerId: currentUserId,
+            userId: new mongoose.Types.ObjectId(targetUserId),
+          }),
+          this.followingModel.create({
+            followingId: new mongoose.Types.ObjectId(targetUserId),
+            userId: currentUserId,
+          }),
+        ]);
+        message = "You followed";
+      }
+      await session.commitTransaction();
+      return { message };
+    } finally {
+      await session.endSession();
     }
-    return { message };
   }
 
   async searchUsers(name?: string) {

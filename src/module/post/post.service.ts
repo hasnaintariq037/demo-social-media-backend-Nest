@@ -54,21 +54,28 @@ export class PostService {
     if (post.media?.length) {
       await this.cloudinaryService.deleteMultiple(post.media);
     }
-    await Promise.all([
-      this.likeModel.deleteMany({
-        postId: new mongoose.Types.ObjectId(postId),
-      }),
-      this.shareModel.deleteMany({
-        sharedPostId: new mongoose.Types.ObjectId(postId),
-      }),
-      this.postModel.deleteMany({
-        $or: [
-          { _id: postId },
-          { originalPost: new mongoose.Types.ObjectId(postId) },
-        ],
-      }),
-    ]);
-    return { message: "Post and related likes deleted successfully" };
+    const session = await mongoose.startSession();
+    try {
+      session.startTransaction();
+      await Promise.all([
+        this.likeModel.deleteMany({
+          postId: new mongoose.Types.ObjectId(postId),
+        }),
+        this.shareModel.deleteMany({
+          sharedPostId: new mongoose.Types.ObjectId(postId),
+        }),
+        this.postModel.deleteMany({
+          $or: [
+            { _id: postId },
+            { originalPost: new mongoose.Types.ObjectId(postId) },
+          ],
+        }),
+      ]);
+      await session.commitTransaction();
+      return { message: "Post and related likes deleted successfully" };
+    } finally {
+      await session.endSession();
+    }
   }
 
   async sharePost(postId: string, requestBody: SharePostDTO, req: Request) {
@@ -76,16 +83,26 @@ export class PostService {
     if (!post) {
       throw new BadRequestException("Post not found");
     }
-    const [sharedPost] = await Promise.all([
-      await this.postModel.create({
-        media: [],
-        content: requestBody.content,
-        originalPost: post._id,
-        author: req.user._id,
-      }),
-      this.shareModel.create({ sharedPostId: post._id, userId: req.user._id }),
-    ]);
-    return sharedPost;
+    const session = await mongoose.startSession();
+    try {
+      session.startTransaction();
+      const [sharedPost] = await Promise.all([
+        await this.postModel.create({
+          media: [],
+          content: requestBody.content,
+          originalPost: post._id,
+          author: req.user._id,
+        }),
+        this.shareModel.create({
+          sharedPostId: post._id,
+          userId: req.user._id,
+        }),
+      ]);
+      await session.commitTransaction();
+      return sharedPost;
+    } finally {
+      await session.endSession();
+    }
   }
 
   async likePost(postId: string, req: Request) {
