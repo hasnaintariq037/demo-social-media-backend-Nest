@@ -19,7 +19,7 @@ import { ResetPasswordDto } from "./dto/resetPassword.dto";
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  @Post("/register")
+  @Post()
   async register(
     @Body() requestBody: RegisterDTO,
     @Res({ passthrough: true }) res: Response

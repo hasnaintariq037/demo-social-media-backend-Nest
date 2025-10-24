@@ -40,7 +40,7 @@ export class UserController {
     })
   )
   @UseGuards(AuthGuard)
-  @Put("update-profile")
+  @Put()
   async updateProfile(
     @Body() requestBody: UpdateProfileDto,
     @Req() req: Request,
@@ -73,7 +73,7 @@ export class UserController {
   }
 
   @UseGuards(AuthGuard)
-  @Post("follow-user/:targetUserId")
+  @Post(":targetUserId")
   async followUser(@Param("targetUserId") targetUser, @Req() req: Request) {
     try {
       const { message } = await this.userService.followUser(targetUser, req);
@@ -91,7 +91,7 @@ export class UserController {
   }
 
   @UseGuards(AuthGuard)
-  @Get("search-user")
+  @Get()
   async searchUser(@Query("name") name: string) {
     try {
       const users = await this.userService.searchUsers(name);

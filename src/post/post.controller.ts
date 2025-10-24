@@ -38,7 +38,7 @@ export class PostController {
       }),
     })
   )
-  @Post("create-post")
+  @Post()
   async createPost(
     @Body() requestBody: CreatePostDTO,
     @Req() req: Request,
@@ -68,7 +68,7 @@ export class PostController {
   }
 
   @UseGuards(AuthGuard)
-  @Delete("delete-post/:postId")
+  @Delete(":postId")
   async deletePost(@Param("postId") postId: string, @Req() req: Request) {
     try {
       await this.postService.deletePost(postId, req);
@@ -136,7 +136,7 @@ export class PostController {
   }
 
   @UseGuards(AuthGuard)
-  @Get("getall-posts")
+  @Get()
   async getAllPosts(@Req() req) {
     try {
       const posts = await this.postService.getAllPosts(req);

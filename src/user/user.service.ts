@@ -118,10 +118,10 @@ export class UserService {
     return { message };
   }
 
-  async searchUsers(name) {
-    const users = await this.userModel.find({
-      name: { $regex: name, $options: "i" },
-    });
+  async searchUsers(name?: string) {
+    const filter = name ? { name: { $regex: name, $options: "i" } } : {};
+
+    const users = await this.userModel.find(filter);
     return users;
   }
 }
