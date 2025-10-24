@@ -9,6 +9,7 @@ import { JwtServiceService } from "src/services/jwt-service/jwt-service.service"
 import { NodemailerService } from "src/services/nodemailer/nodemailer.service";
 import { ResetPasswordDto } from "./dto/resetPassword.dto";
 import { ConfigService } from "@nestjs/config";
+import { EmailTemplateType } from "src/common/enum/email-templates.enum";
 
 @Injectable()
 export class AuthService {
@@ -72,19 +73,15 @@ export class AuthService {
     const resetUrl = `${this.configservice.get<string>("FRONTEND_URL")}/reset-password/${plainToken}`;
     const expiryTime = expiresAt.toLocaleTimeString();
 
-    const resetTemplate = `
-      <p>You requested to reset your password.</p>
-      <p>Click below to set a new one. The link expires at <strong>${expiryTime}</strong>.</p>
-      <a href="${resetUrl}" style="display:inline-block;background:#2563eb;color:#fff;padding:10px 15px;border-radius:6px;text-decoration:none">Reset Password</a>
-      <p>If you didn’t request this, please ignore this email.</p>
-    `;
-
     // Send reset email
-    await this.nodeMailerService.sendMail({
-      to: user.email,
-      subject: "Password Reset Request",
-      html: resetTemplate,
-    });
+    await this.nodeMailerService.sendMail(
+      user.email,
+      EmailTemplateType.PASSWORD_RESET,
+      {
+        resetUrl,
+        expiryTime,
+      }
+    );
 
     return { message: "Reset password email sent successfully" };
   }
