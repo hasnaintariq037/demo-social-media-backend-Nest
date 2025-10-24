@@ -32,7 +32,9 @@ export class AuthService {
   }
 
   /** Login user */
-  async loginUser(requestData: LoginDTO) {
+  async loginUser(
+    requestData: LoginDTO
+  ): Promise<{ token: string; user: any }> {
     const user = await this.userService.findUserByEmail(requestData.email);
 
     if (!user || !(await bcrypt.compare(requestData.password, user.password))) {
@@ -40,7 +42,10 @@ export class AuthService {
     }
 
     const { access_token } = await this.jwtService.signIn(String(user._id));
-    return { token: access_token, user };
+    return {
+      token: access_token,
+      user: { ...(user.toObject?.() ?? user), password: undefined },
+    };
   }
 
   /** Forgot Password - Send Reset Email */
