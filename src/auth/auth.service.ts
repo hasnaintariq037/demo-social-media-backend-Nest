@@ -69,7 +69,7 @@ export class AuthService {
     await user.save({ validateBeforeSave: false });
 
     // Create reset link
-    const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${plainToken}`;
+    const resetUrl = `${this.configservice.get<string>("FRONTEND_URL")}/reset-password/${plainToken}`;
     const expiryTime = expiresAt.toLocaleTimeString();
 
     const resetTemplate = `
