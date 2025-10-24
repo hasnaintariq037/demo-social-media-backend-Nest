@@ -20,17 +20,11 @@ export class UserService {
   ) {}
 
   async registerUser(userData) {
-    try {
-      const user = await this.userModel.create(userData);
-      const { access_token } = await this.jwtService.generateAuthToken(
-        String(user._id)
-      );
-      return { token: access_token, user };
-    } catch (error) {
-      if (error.code === 11000) {
-        throw new BadRequestException("email already exists");
-      }
-    }
+    const user = await this.userModel.create(userData);
+    const { access_token } = await this.jwtService.generateAuthToken(
+      String(user._id)
+    );
+    return { token: access_token, user };
   }
 
   async findUserByEmail(email) {
@@ -120,7 +114,6 @@ export class UserService {
 
   async searchUsers(name?: string) {
     const filter = name ? { name: { $regex: name, $options: "i" } } : {};
-
     const users = await this.userModel.find(filter);
     return users;
   }

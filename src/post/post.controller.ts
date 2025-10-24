@@ -44,48 +44,26 @@ export class PostController {
     @Req() req: Request,
     @UploadedFiles() files: Express.Multer.File[]
   ) {
-    try {
-      const createdPost = await this.postService.createPost(
-        requestBody,
-        req,
-        files
-      );
-      return {
-        succeeded: true,
-        message: "Post created successfully",
-        data: createdPost,
-      };
-    } catch (error) {
-      throw new HttpException(
-        {
-          statusCode: HttpStatus.BAD_REQUEST,
-          message: error.message || "Registration failed",
-          succeeded: false,
-        },
-        HttpStatus.BAD_REQUEST
-      );
-    }
+    const createdPost = await this.postService.createPost(
+      requestBody,
+      req,
+      files
+    );
+    return {
+      succeeded: true,
+      message: "Post created successfully",
+      data: createdPost,
+    };
   }
 
   @UseGuards(AuthGuard)
   @Delete(":postId")
   async deletePost(@Param("postId") postId: string, @Req() req: Request) {
-    try {
-      await this.postService.deletePost(postId, req);
-      return {
-        succeeded: true,
-        message: "Post deleted successfully",
-      };
-    } catch (error) {
-      throw new HttpException(
-        {
-          statusCode: HttpStatus.BAD_REQUEST,
-          message: error.message || "Registration failed",
-          succeeded: false,
-        },
-        HttpStatus.BAD_REQUEST
-      );
-    }
+    await this.postService.deletePost(postId, req);
+    return {
+      succeeded: true,
+      message: "Post deleted successfully",
+    };
   }
 
   @UseGuards(AuthGuard)
@@ -95,65 +73,32 @@ export class PostController {
     @Body() requestBody: SharePostDTO,
     @Req() req: Request
   ) {
-    try {
-      const result = await this.postService.sharePost(postId, requestBody, req);
-      return {
-        succeeded: true,
-        message: "Post shared successfully",
-        data: result,
-      };
-    } catch (error) {
-      throw new HttpException(
-        {
-          statusCode: HttpStatus.BAD_REQUEST,
-          message: error.message || "Registration failed",
-          succeeded: false,
-        },
-        HttpStatus.BAD_REQUEST
-      );
-    }
+    const result = await this.postService.sharePost(postId, requestBody, req);
+    return {
+      succeeded: true,
+      message: "Post shared successfully",
+      data: result,
+    };
   }
 
   @UseGuards(AuthGuard)
   @Post("like-post/:postId")
   async likePost(@Param("postId") postId: string, @Req() req: Request) {
-    try {
-      const message = await this.postService.likePost(postId, req);
-      return {
-        succeeded: true,
-        message: `You ${message} the post`,
-      };
-    } catch (error) {
-      throw new HttpException(
-        {
-          statusCode: HttpStatus.BAD_REQUEST,
-          message: error.message || "Registration failed",
-          succeeded: false,
-        },
-        HttpStatus.BAD_REQUEST
-      );
-    }
+    const message = await this.postService.likePost(postId, req);
+    return {
+      succeeded: true,
+      message: `You ${message} the post`,
+    };
   }
 
   @UseGuards(AuthGuard)
   @Get()
   async getAllPosts(@Req() req) {
-    try {
-      const posts = await this.postService.getAllPosts(req);
-      return {
-        succeeded: true,
-        message: "Posts fetched successfully",
-        posts,
-      };
-    } catch (error) {
-      throw new HttpException(
-        {
-          statusCode: HttpStatus.BAD_REQUEST,
-          message: error.message || "Registration failed",
-          succeeded: false,
-        },
-        HttpStatus.BAD_REQUEST
-      );
-    }
+    const posts = await this.postService.getAllPosts(req);
+    return {
+      succeeded: true,
+      message: "Posts fetched successfully",
+      posts,
+    };
   }
 }

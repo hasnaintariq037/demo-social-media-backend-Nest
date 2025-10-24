@@ -46,69 +46,29 @@ export class UserController {
     @Req() req: Request,
     @UploadedFile() file: Express.Multer.File
   ) {
-    try {
-      const result = await this.userService.updateProfile(
-        requestBody,
-        req,
-        file
-      );
-      return {
-        succeeded: true,
-        message: "Profile updted successfully",
-        data: result,
-      };
-    } catch (error) {
-      if (error.code === 11000) {
-        throw new BadRequestException("email already exists");
-      }
-      throw new HttpException(
-        {
-          statusCode: HttpStatus.BAD_REQUEST,
-          message: error.message || "Registration failed",
-          succeeded: false,
-        },
-        HttpStatus.BAD_REQUEST
-      );
-    }
+    const result = await this.userService.updateProfile(requestBody, req, file);
+    return {
+      succeeded: true,
+      message: "Profile updted successfully",
+      data: result,
+    };
   }
 
   @UseGuards(AuthGuard)
   @Post(":targetUserId")
   async followUser(@Param("targetUserId") targetUser, @Req() req: Request) {
-    try {
-      const { message } = await this.userService.followUser(targetUser, req);
-      return { succeeded: true, message };
-    } catch (error) {
-      throw new HttpException(
-        {
-          statusCode: HttpStatus.BAD_REQUEST,
-          message: error.message || "Registration failed",
-          succeeded: false,
-        },
-        HttpStatus.BAD_REQUEST
-      );
-    }
+    const { message } = await this.userService.followUser(targetUser, req);
+    return { succeeded: true, message };
   }
 
   @UseGuards(AuthGuard)
   @Get()
   async searchUser(@Query("name") name: string) {
-    try {
-      const users = await this.userService.searchUsers(name);
-      return {
-        succeeded: true,
-        message: "users list fetched successfully",
-        data: users,
-      };
-    } catch (error) {
-      throw new HttpException(
-        {
-          statusCode: HttpStatus.BAD_REQUEST,
-          message: error.message || "Registration failed",
-          succeeded: false,
-        },
-        HttpStatus.BAD_REQUEST
-      );
-    }
+    const users = await this.userService.searchUsers(name);
+    return {
+      succeeded: true,
+      message: "users list fetched successfully",
+      data: users,
+    };
   }
 }

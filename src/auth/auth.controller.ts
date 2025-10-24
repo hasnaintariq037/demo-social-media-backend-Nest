@@ -24,28 +24,17 @@ export class AuthController {
     @Body() requestBody: RegisterDTO,
     @Res({ passthrough: true }) res: Response
   ) {
-    try {
-      const data = await this.authService.regsiterUser(requestBody);
+    const data = await this.authService.regsiterUser(requestBody);
 
-      res.cookie("accessToken", data?.token, {
-        httpOnly: true,
-      });
+    res.cookie("accessToken", data?.token, {
+      httpOnly: true,
+    });
 
-      return {
-        message: "User registered successfully",
-        succeeded: true,
-        data: data?.user,
-      };
-    } catch (error) {
-      throw new HttpException(
-        {
-          statusCode: HttpStatus.BAD_REQUEST,
-          message: error.message || "Registration failed",
-          succeeded: false,
-        },
-        HttpStatus.BAD_REQUEST
-      );
-    }
+    return {
+      message: "User registered successfully",
+      succeeded: true,
+      data: data?.user,
+    };
   }
 
   @Post("/login")
@@ -53,28 +42,17 @@ export class AuthController {
     @Body() requestBody: LoginDTO,
     @Res({ passthrough: true }) res: Response
   ) {
-    try {
-      const data = await this.authService.loginUser(requestBody);
+    const data = await this.authService.loginUser(requestBody);
 
-      res.cookie("accessToken", data?.token, {
-        httpOnly: true,
-      });
+    res.cookie("accessToken", data?.token, {
+      httpOnly: true,
+    });
 
-      return {
-        message: "User logged in successfully",
-        succeeded: true,
-        data: data?.user,
-      };
-    } catch (error) {
-      throw new HttpException(
-        {
-          statusCode: HttpStatus.BAD_REQUEST,
-          message: error.message || "Registration failed",
-          succeeded: false,
-        },
-        HttpStatus.BAD_REQUEST
-      );
-    }
+    return {
+      message: "User logged in successfully",
+      succeeded: true,
+      data: data?.user,
+    };
   }
 
   @Get("/logout")
@@ -88,22 +66,11 @@ export class AuthController {
 
   @Post("/forgot-password")
   async forgotPassword(@Body() requestBody: ForgotPasswordDTO) {
-    try {
-      await this.authService.forgotPassword(requestBody);
-      return {
-        message: "Password reset link sent to your email",
-        succeeded: true,
-      };
-    } catch (error) {
-      throw new HttpException(
-        {
-          statusCode: HttpStatus.BAD_REQUEST,
-          message: error.message || "Registration failed",
-          succeeded: false,
-        },
-        HttpStatus.BAD_REQUEST
-      );
-    }
+    await this.authService.forgotPassword(requestBody);
+    return {
+      message: "Password reset link sent to your email",
+      succeeded: true,
+    };
   }
 
   @Post("/reset-password/:token")
@@ -111,21 +78,10 @@ export class AuthController {
     @Body() requestBody: ResetPasswordDto,
     @Param("token") token: string
   ) {
-    try {
-      await this.authService.resetPassword(requestBody, token);
-      return {
-        message: "password updated successfully",
-        succeeded: true,
-      };
-    } catch (error) {
-      throw new HttpException(
-        {
-          statusCode: HttpStatus.BAD_REQUEST,
-          message: error.message || "Registration failed",
-          succeeded: false,
-        },
-        HttpStatus.BAD_REQUEST
-      );
-    }
+    await this.authService.resetPassword(requestBody, token);
+    return {
+      message: "password updated successfully",
+      succeeded: true,
+    };
   }
 }
