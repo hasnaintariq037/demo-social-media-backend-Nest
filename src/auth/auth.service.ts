@@ -8,18 +8,20 @@ import { UserService } from "src/user/user.service";
 import { JwtServiceService } from "src/services/jwt-service/jwt-service.service";
 import { NodemailerService } from "src/services/nodemailer/nodemailer.service";
 import { ResetPasswordDto } from "./dto/resetPassword.dto";
+import { ConfigService } from "@nestjs/config";
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly userService: UserService,
     private readonly jwtService: JwtServiceService,
-    private readonly nodeMailerService: NodemailerService
+    private readonly nodeMailerService: NodemailerService,
+    private readonly configservice: ConfigService
   ) {}
 
   /** Register new user */
   async regsiterUser(requestData: RegisterDTO) {
-    const saltOrRounds = 10;
+    const saltOrRounds = Number(this.configservice.get<number>("SALT_ROUNDS"));
     const hashedPassword = await bcrypt.hash(
       requestData.password,
       saltOrRounds
