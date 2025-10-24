@@ -5,7 +5,7 @@ export type PostDocument = HydratedDocument<Post>;
 
 @Schema({ timestamps: true })
 export class Post extends Document {
-  @Prop({ required: true })
+  @Prop({ type: Types.ObjectId, required: true, ref: "User" })
   author: Types.ObjectId;
 
   @Prop({ required: true })
