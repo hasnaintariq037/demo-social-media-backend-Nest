@@ -39,7 +39,7 @@ export class AuthController {
     return createResponse(data?.user, "User logged in successfully");
   }
 
-  @Get("/logout")
+  @Post("/logout")
   async logout(@Res({ passthrough: true }) res: Response) {
     res.clearCookie("accessToken");
 
