@@ -30,11 +30,7 @@ export class PostService {
     const { content } = requestBody;
     let imageUrls: string[] = [];
     if (files && files.length > 0) {
-      const uploadPromises = files.map((file) =>
-        this.cloudinaryService.uploadToCloudinary(file.path, "posts")
-      );
-      const results = await Promise.all(uploadPromises);
-      imageUrls = results.map((r) => r.secure_url);
+      imageUrls = await this.cloudinaryService.uploadMultiple(files, "posts");
     }
     const createdPost = await this.postModel.create({
       content,
@@ -56,13 +52,7 @@ export class PostService {
     }
 
     if (post.media?.length) {
-      const deletePromises = post.media.map((imgUrl) => {
-        const parts = imgUrl.split("/");
-        const fileName = parts[parts.length - 1];
-        const publicId = `posts/${fileName.split(".")[0]}`;
-        return this.cloudinaryService.deleteFromCloudinary(publicId);
-      });
-      await Promise.all(deletePromises);
+      await this.cloudinaryService.deleteMultiple(post.media);
     }
     await Promise.all([
       this.likeModel.deleteMany({

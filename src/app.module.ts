@@ -5,6 +5,7 @@ import { MongooseModule } from "@nestjs/mongoose";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import { ServicesModule } from "./services/services.module";
 import { PostModule } from "./module/post/post.module";
+import { CloudinaryService } from "./services/cloudinary/cloudinary.service";
 
 @Module({
   imports: [
@@ -24,6 +25,6 @@ import { PostModule } from "./module/post/post.module";
     PostModule,
   ],
   controllers: [],
-  providers: [],
+  providers: [CloudinaryService],
 })
 export class AppModule {}
