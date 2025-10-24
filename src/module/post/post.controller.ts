@@ -12,7 +12,7 @@ import {
 } from "@nestjs/common";
 import { CreatePostDTO } from "./dto/createPost.dto";
 import { PostService } from "./post.service";
-import { AuthGuard } from "src/auth/guard/auth.guard";
+import { AuthGuard } from "src/module/auth/guard/auth.guard";
 import type { Request } from "express";
 import { FilesInterceptor } from "@nestjs/platform-express";
 import multer from "multer";

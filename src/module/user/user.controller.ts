@@ -14,7 +14,7 @@ import {
 import { UpdateProfileDto } from "./dto/updateProfile.dto";
 import { UserService } from "./user.service";
 import type { Request } from "express";
-import { AuthGuard } from "src/auth/guard/auth.guard";
+import { AuthGuard } from "src/module/auth/guard/auth.guard";
 import { FileInterceptor } from "@nestjs/platform-express";
 import multer from "multer";
 import { createResponse } from "src/util/response.util";

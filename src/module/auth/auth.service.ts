@@ -4,7 +4,7 @@ import * as crypto from "crypto";
 import { RegisterDTO } from "./dto/register.dto";
 import { LoginDTO } from "./dto/login.dto";
 import { ForgotPasswordDTO } from "./dto/forPassword.dto";
-import { UserService } from "src/user/user.service";
+import { UserService } from "src/module/user/user.service";
 import { JwtServiceService } from "src/services/jwt-service/jwt-service.service";
 import { NodemailerService } from "src/services/nodemailer/nodemailer.service";
 import { ResetPasswordDto } from "./dto/resetPassword.dto";
