@@ -7,12 +7,14 @@ import { AuthModule } from "src/auth/auth.module";
 import { UserModule } from "src/user/user.module";
 import { ServicesModule } from "src/services/services.module";
 import { Like, LikeSchema } from "./schema/like.schema";
+import { Share, ShareSchema } from "./schema/share.schema";
 
 @Module({
   imports: [
     MongooseModule.forFeature([
       { name: post.name, schema: PostSchema },
       { name: Like.name, schema: LikeSchema },
+      { name: Share.name, schema: ShareSchema },
     ]),
     AuthModule,
     UserModule,

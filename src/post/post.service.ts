@@ -11,12 +11,14 @@ import { Request } from "express";
 import { CloudinaryService } from "src/services/cloudinary/cloudinary.service";
 import { SharePostDTO } from "./dto/sharePost.dto";
 import { Like } from "./schema/like.schema";
+import { Share } from "./schema/share.schema";
 
 @Injectable()
 export class PostService {
   constructor(
     @InjectModel(Post.name) private postModel: Model<Post>,
     @InjectModel(Like.name) private likeModel: Model<Like>,
+    @InjectModel(Share.name) private shareModel: Model<Share>,
     private readonly cloudinaryService: CloudinaryService
   ) {}
 
@@ -62,14 +64,20 @@ export class PostService {
       });
       await Promise.all(deletePromises);
     }
-
-    Promise.all([
-      await this.likeModel.deleteMany({
+    await Promise.all([
+      this.likeModel.deleteMany({
         postId: new mongoose.Types.ObjectId(postId),
       }),
-      await this.postModel.deleteOne({ _id: postId }),
+      this.shareModel.deleteMany({
+        sharedPostId: new mongoose.Types.ObjectId(postId),
+      }),
+      this.postModel.deleteMany({
+        $or: [
+          { _id: postId },
+          { originalPost: new mongoose.Types.ObjectId(postId) },
+        ],
+      }),
     ]);
-
     return { message: "Post and related likes deleted successfully" };
   }
 
@@ -78,16 +86,15 @@ export class PostService {
     if (!post) {
       throw new BadRequestException("Post not found");
     }
-    post.shares.push(req.user._id);
-    await post.save({ validateBeforeSave: false });
-    const sharedPost = await this.postModel.create({
-      media: [],
-      likes: [],
-      shares: [],
-      content: requestBody.content,
-      originalPost: post._id,
-      author: req.user._id,
-    });
+    const [sharedPost] = await Promise.all([
+      await this.postModel.create({
+        media: [],
+        content: requestBody.content,
+        originalPost: post._id,
+        author: req.user._id,
+      }),
+      this.shareModel.create({ sharedPostId: post._id, userId: req.user._id }),
+    ]);
     return sharedPost;
   }
 
@@ -134,7 +141,7 @@ export class PostService {
       $lookup: {
         from: "shares",
         localField: "_id",
-        foreignField: "postId",
+        foreignField: "sharedPostId",
         as: "sharesData",
       },
     });
