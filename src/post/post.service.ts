@@ -6,7 +6,7 @@ import {
 import { CreatePostDTO } from "./dto/createPost.dto";
 import { InjectModel } from "@nestjs/mongoose";
 import { Post } from "./schema/post.schrma";
-import { Model } from "mongoose";
+import mongoose, { Model } from "mongoose";
 import { Request } from "express";
 import { CloudinaryService } from "src/services/cloudinary/cloudinary.service";
 import { SharePostDTO } from "./dto/sharePost.dto";
@@ -47,9 +47,14 @@ export class PostService {
     if (!post) {
       throw new BadRequestException("Post not found");
     }
-    if (post.media && post.media.length > 0) {
+
+    const isOwner = this.checkPostOwner(post.author, req.user._id);
+    if (!isOwner) {
+      throw new ForbiddenException("You are not the owner of this post");
+    }
+
+    if (post.media?.length) {
       const deletePromises = post.media.map((imgUrl) => {
-        // Extract publicId from URL (Cloudinary path)
         const parts = imgUrl.split("/");
         const fileName = parts[parts.length - 1];
         const publicId = `posts/${fileName.split(".")[0]}`;
@@ -57,11 +62,15 @@ export class PostService {
       });
       await Promise.all(deletePromises);
     }
-    const isOwner = this.checkPostOwner(post.author, req.user._id);
-    if (!isOwner) {
-      throw new ForbiddenException("You are not owner of this post");
-    }
-    return await this.postModel.deleteOne({ _id: postId });
+
+    Promise.all([
+      await this.likeModel.deleteMany({
+        postId: new mongoose.Types.ObjectId(postId),
+      }),
+      await this.postModel.deleteOne({ _id: postId }),
+    ]);
+
+    return { message: "Post and related likes deleted successfully" };
   }
 
   async sharePost(postId: string, requestBody: SharePostDTO, req: Request) {
@@ -85,12 +94,17 @@ export class PostService {
   async likePost(postId: string, req: Request) {
     let message = "";
     const userId = req.user._id;
-    const isAlreadyliked = await this.likeModel.findOne({ postId });
+    const isAlreadyliked = await this.likeModel.findOne({
+      postId: new mongoose.Types.ObjectId(postId),
+    });
     if (isAlreadyliked) {
       await this.likeModel.deleteOne({ _id: isAlreadyliked._id });
       message = "Unliked";
     } else {
-      await this.likeModel.create({ postId, userId: userId });
+      await this.likeModel.create({
+        postId: new mongoose.Types.ObjectId(postId),
+        userId: userId,
+      });
       message = "Liked";
     }
     return message;
@@ -98,31 +112,49 @@ export class PostService {
 
   async getAllPosts(req: Request) {
     const { isMostLikedPosts, isFollowingPosts, isMostSharedPosts } = req.query;
-    let pipeline: any[] = [];
-    if (isFollowingPosts === "true") {
+    const user = req.user;
+    const pipeline: any[] = [];
+
+    if (isFollowingPosts === "true" && user?.following?.length) {
       pipeline.push({
-        $match: { author: { $in: req.user.following || [] } },
+        $match: { author: { $in: user.following } },
       });
     }
-    // Add counts for likes and shares
+
     pipeline.push({
-      $addFields: {
-        likesCount: { $size: { $ifNull: ["$likes", []] } },
-        sharesCount: { $size: { $ifNull: ["$shares", []] } },
+      $lookup: {
+        from: "likes",
+        localField: "_id",
+        foreignField: "postId",
+        as: "likesData",
       },
     });
 
-    if (isMostLikedPosts) {
+    pipeline.push({
+      $lookup: {
+        from: "shares",
+        localField: "_id",
+        foreignField: "postId",
+        as: "sharesData",
+      },
+    });
+
+    // Add computed counts
+    pipeline.push({
+      $addFields: {
+        likesCount: { $size: { $ifNull: ["$likesData", []] } },
+        sharesCount: { $size: { $ifNull: ["$sharesData", []] } },
+      },
+    });
+
+    // Sorting logic
+    if (isMostLikedPosts === "true") {
       pipeline.push({ $match: { likesCount: { $gt: 0 } } });
       pipeline.push({ $sort: { likesCount: -1, createdAt: -1 } });
-    }
-
-    if (isMostSharedPosts) {
+    } else if (isMostSharedPosts === "true") {
       pipeline.push({ $match: { sharesCount: { $gt: 0 } } });
       pipeline.push({ $sort: { sharesCount: -1, createdAt: -1 } });
-    }
-
-    if (!isMostLikedPosts && !isMostSharedPosts) {
+    } else {
       pipeline.push({ $sort: { createdAt: -1 } });
     }
 
@@ -157,8 +189,24 @@ export class PostService {
         as: "originalPost.author",
       },
     });
+    pipeline.push({
+      $unwind: {
+        path: "$originalPost.author",
+        preserveNullAndEmptyArrays: true,
+      },
+    });
+
+    // Final projection to clean up output
+    pipeline.push({
+      $project: {
+        "author.password": 0,
+        "originalPost.author.password": 0,
+      },
+    });
 
     const posts = await this.postModel.aggregate(pipeline);
+    console.log(posts, "posts");
+
     return posts;
   }
 

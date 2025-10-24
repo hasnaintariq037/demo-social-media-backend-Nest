@@ -15,9 +15,6 @@ export class Post extends Document {
   media: string[];
 
   @Prop({ type: [{ type: Types.ObjectId, ref: "User" }], default: [] })
-  likes: Types.ObjectId[];
-
-  @Prop({ type: [{ type: Types.ObjectId, ref: "User" }], default: [] })
   shares: Types.ObjectId[];
 
   @Prop({ type: Types.ObjectId, ref: "Post" })
