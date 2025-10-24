@@ -9,7 +9,7 @@ export class JwtServiceService {
     private configService: ConfigService
   ) {}
 
-  async signIn(_id: string): Promise<{ access_token: string }> {
+  async generateAuthToken(_id: string): Promise<{ access_token: string }> {
     const payload = { sub: _id };
     return {
       access_token: await this.jwtService.signAsync(payload),

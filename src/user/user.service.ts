@@ -18,7 +18,9 @@ export class UserService {
   async registerUser(userData) {
     try {
       const user = await this.userModel.create(userData);
-      const { access_token } = await this.jwtService.signIn(String(user._id));
+      const { access_token } = await this.jwtService.generateAuthToken(
+        String(user._id)
+      );
       return { token: access_token, user };
     } catch (error) {
       if (error.code === 11000) {

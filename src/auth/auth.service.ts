@@ -43,7 +43,9 @@ export class AuthService {
       throw new BadRequestException("Invalid email or password");
     }
 
-    const { access_token } = await this.jwtService.signIn(String(user._id));
+    const { access_token } = await this.jwtService.generateAuthToken(
+      String(user._id)
+    );
     return {
       token: access_token,
       user: { ...(user.toObject?.() ?? user), password: undefined },
