@@ -76,11 +76,8 @@ export class UserController {
   @Post("follow-user/:targetUserId")
   async followUser(@Param("targetUserId") targetUser, @Req() req: Request) {
     try {
-      const { message, result } = await this.userService.followUser(
-        targetUser,
-        req
-      );
-      return { succeeded: true, message: message, data: result };
+      const { message } = await this.userService.followUser(targetUser, req);
+      return { succeeded: true, message };
     } catch (error) {
       throw new HttpException(
         {

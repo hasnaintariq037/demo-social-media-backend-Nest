@@ -6,11 +6,15 @@ import { JwtServiceService } from "src/services/jwt-service/jwt-service.service"
 import { UpdateProfileDto } from "./dto/updateProfile.dto";
 import { Request } from "express";
 import { CloudinaryService } from "src/services/cloudinary/cloudinary.service";
+import { Follower } from "./schema/follower.schema";
+import { Following } from "./schema/following.schema";
 
 @Injectable()
 export class UserService {
   constructor(
     @InjectModel(User.name) private userModel: Model<User>,
+    @InjectModel(Follower.name) private followerModel: Model<User>,
+    @InjectModel(Following.name) private followingModel: Model<User>,
     private readonly jwtService: JwtServiceService,
     private readonly cloudinaryService: CloudinaryService
   ) {}
@@ -79,46 +83,39 @@ export class UserService {
     // Convert current user ID to ObjectId
     const currentUserId = new mongoose.Types.ObjectId(req.user._id as string);
     let currentUser = req.user;
+    let message = "";
 
-    if (currentUserId.equals(targetUserId)) {
-      throw new BadRequestException("You cannot follow yourself");
-    }
+    const isAlreadyFollowed = await this.followingModel.findOne({
+      followingId: new mongoose.Types.ObjectId(targetUserId),
+      userId: currentUserId,
+    });
 
-    const targetUser = await this.userModel.findById(targetUserId);
-    if (!targetUser)
-      throw new BadRequestException("You cannot follow yourself");
-
-    // Initialize arrays if undefined
-    targetUser.followers = targetUser.followers || [];
-    currentUser.following = currentUser.following || [];
-
-    const alreadyFollowing = targetUser.followers.some((f) =>
-      f.equals(currentUserId)
-    );
-
-    if (alreadyFollowing) {
-      // UNFOLLOW
-      targetUser.followers = targetUser.followers.filter(
-        (f) => !f.equals(currentUserId)
-      );
-      currentUser.following = currentUser.following.filter(
-        (f) => !f.equals(targetUserId)
-      );
-
-      await targetUser.save({ validateBeforeSave: false });
-      const result = await currentUser.save({ validateBeforeSave: false });
-
-      return { result, message: `You unfollow ${targetUser?.name}` };
+    if (isAlreadyFollowed) {
+      await Promise.all([
+        this.followerModel.deleteOne({
+          followerId: currentUserId,
+          userId: new mongoose.Types.ObjectId(targetUserId),
+        }),
+        this.followingModel.deleteOne({
+          followingId: new mongoose.Types.ObjectId(targetUserId),
+          userId: currentUserId,
+        }),
+      ]);
+      message = "You unfollowed";
     } else {
-      // FOLLOW
-      targetUser.followers.push(currentUserId);
-      currentUser.following.push(new mongoose.Types.ObjectId(targetUserId));
-
-      await targetUser.save({ validateBeforeSave: false });
-      const result = await currentUser.save({ validateBeforeSave: false });
-
-      return { result, message: `You follow ${targetUser?.name}` };
+      await Promise.all([
+        this.followerModel.create({
+          followerId: currentUserId,
+          userId: new mongoose.Types.ObjectId(targetUserId),
+        }),
+        this.followingModel.create({
+          followingId: new mongoose.Types.ObjectId(targetUserId),
+          userId: currentUserId,
+        }),
+      ]);
+      message = "You followed";
     }
+    return { message };
   }
 
   async searchUsers(name) {
