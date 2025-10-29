@@ -53,12 +53,9 @@ export class AuthController {
     return createResponse("Password reset link sent to your email");
   }
 
-  @Post("reset-password/:token")
-  async resetPassword(
-    @Body() requestBody: ResetPasswordDto,
-    @Param("token") token: string
-  ) {
-    await this.authService.resetPassword(requestBody, token);
+  @Post("reset-password")
+  async resetPassword(@Body() requestBody: ResetPasswordDto) {
+    await this.authService.resetPassword(requestBody);
 
     return createResponse("passwore updated successfully");
   }

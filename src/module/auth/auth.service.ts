@@ -86,8 +86,8 @@ export class AuthService {
     return { message: "Reset password email sent successfully" };
   }
 
-  async resetPassword(requestData: ResetPasswordDto, token: string) {
-    const { password } = requestData;
+  async resetPassword(requestData: ResetPasswordDto) {
+    const { password, token } = requestData;
     const resetPasswordToken = crypto
       .createHash("sha256")
       .update(token)
@@ -96,7 +96,13 @@ export class AuthService {
     const user = await this.userService.findUserByToken(resetPasswordToken);
     if (!user) throw new BadRequestException("Invalid or expired token");
 
-    user.password = password;
+    const saltOrRounds = Number(this.configservice.get<number>("SALT_ROUNDS"));
+    const hashedPassword = await bcrypt.hash(
+      requestData.password,
+      saltOrRounds
+    );
+
+    user.password = hashedPassword;
     user.resetToken = undefined;
     user.resetPasswordExpires = undefined;
     await user.save({ validateBeforeSave: false });
