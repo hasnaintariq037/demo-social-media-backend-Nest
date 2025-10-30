@@ -5,13 +5,15 @@ import {
 } from "@nestjs/common";
 import { CreatePostDTO } from "./dto/createPost.dto";
 import { InjectModel } from "@nestjs/mongoose";
-import { Post } from "./schema/post.schrma";
+import { Post, PostDocument } from "./schema/post.schrma";
 import mongoose, { Model } from "mongoose";
 import { Request } from "express";
 import { CloudinaryService } from "src/services/cloudinary/cloudinary.service";
 import { SharePostDTO } from "./dto/sharePost.dto";
 import { Like } from "./schema/like.schema";
 import { Share } from "./schema/share.schema";
+import { PaginationHelper, PaginationResult } from "src/util/pagination";
+import { Following } from "../user/schema/following.schema";
 
 @Injectable()
 export class PostService {
@@ -19,6 +21,8 @@ export class PostService {
     @InjectModel(Post.name) private postModel: Model<Post>,
     @InjectModel(Like.name) private likeModel: Model<Like>,
     @InjectModel(Share.name) private shareModel: Model<Share>,
+    @InjectModel(Following.name)
+    private readonly followingModel: Model<Following>,
     private readonly cloudinaryService: CloudinaryService
   ) {}
 
@@ -54,21 +58,28 @@ export class PostService {
     if (post.media?.length) {
       await this.cloudinaryService.deleteMultiple(post.media);
     }
-    await Promise.all([
-      this.likeModel.deleteMany({
-        postId: new mongoose.Types.ObjectId(postId),
-      }),
-      this.shareModel.deleteMany({
-        sharedPostId: new mongoose.Types.ObjectId(postId),
-      }),
-      this.postModel.deleteMany({
-        $or: [
-          { _id: postId },
-          { originalPost: new mongoose.Types.ObjectId(postId) },
-        ],
-      }),
-    ]);
-    return { message: "Post and related likes deleted successfully" };
+    const session = await mongoose.startSession();
+    try {
+      session.startTransaction();
+      await Promise.all([
+        this.likeModel.deleteMany({
+          postId: new mongoose.Types.ObjectId(postId),
+        }),
+        this.shareModel.deleteMany({
+          sharedPostId: new mongoose.Types.ObjectId(postId),
+        }),
+        this.postModel.deleteMany({
+          $or: [
+            { _id: postId },
+            { originalPost: new mongoose.Types.ObjectId(postId) },
+          ],
+        }),
+      ]);
+      await session.commitTransaction();
+      return { message: "Post and related likes deleted successfully" };
+    } finally {
+      await session.endSession();
+    }
   }
 
   async sharePost(postId: string, requestBody: SharePostDTO, req: Request) {
@@ -76,16 +87,39 @@ export class PostService {
     if (!post) {
       throw new BadRequestException("Post not found");
     }
-    const [sharedPost] = await Promise.all([
-      await this.postModel.create({
-        media: [],
-        content: requestBody.content,
-        originalPost: post._id,
-        author: req.user._id,
-      }),
-      this.shareModel.create({ sharedPostId: post._id, userId: req.user._id }),
-    ]);
-    return sharedPost;
+
+    const session = await mongoose.startSession();
+
+    try {
+      session.startTransaction();
+      const [sharedPost] = await Promise.all([
+        this.postModel.create(
+          [
+            {
+              media: [],
+              content: requestBody.content,
+              originalPost: post._id,
+              author: req.user._id,
+            },
+          ],
+          { session }
+        ),
+
+        this.shareModel.create(
+          [
+            {
+              sharedPostId: post._id,
+              userId: req.user._id,
+            },
+          ],
+          { session }
+        ),
+      ]);
+      await session.commitTransaction();
+      return sharedPost;
+    } finally {
+      await session.endSession();
+    }
   }
 
   async likePost(postId: string, req: Request) {
@@ -107,14 +141,41 @@ export class PostService {
     return message;
   }
 
-  async getAllPosts(req: Request) {
-    const { isMostLikedPosts, isFollowingPosts, isMostSharedPosts } = req.query;
-    const user = req.user;
+  async getAllPosts(req: Request): Promise<PaginationResult<PostDocument>> {
+    const {
+      isMostLikedPosts,
+      isFollowingPosts,
+      isMostSharedPosts,
+      userId,
+      page,
+      limit,
+    } = req.query;
     const pipeline: any[] = [];
 
-    if (isFollowingPosts === "true" && user?.following?.length) {
+    if (isFollowingPosts === "true") {
+      // Get list of users the current user is following
+      const followingDocs = await this.followingModel
+        .find({
+          userId: new mongoose.Types.ObjectId(userId as string),
+        })
+        .select("followingId");
+
+      const followingIds = followingDocs.map((doc) => doc.followingId);
+
+      if (followingIds.length > 0) {
+        pipeline.push({
+          $match: { author: { $in: followingIds } },
+        });
+      } else {
+        pipeline.push({
+          $match: { _id: null },
+        });
+      }
+    }
+
+    if (userId) {
       pipeline.push({
-        $match: { author: { $in: user.following } },
+        $match: { author: new mongoose.Types.ObjectId(userId as string) },
       });
     }
 
@@ -123,8 +184,20 @@ export class PostService {
         from: "likes",
         localField: "_id",
         foreignField: "postId",
-        as: "likesData",
-        pipeline: [{ $project: { _id: 1 } }],
+        as: "likesDoc",
+        pipeline: [{ $project: { _id: 0, userId: 1 } }],
+      },
+    });
+
+    pipeline.push({
+      $addFields: {
+        likesData: {
+          $map: {
+            input: "$likesDoc",
+            as: "like",
+            in: "$$like.userId",
+          },
+        },
       },
     });
 
@@ -205,7 +278,11 @@ export class PostService {
         "originalPost.author.password": 0,
       },
     });
-    const posts = await this.postModel.aggregate(pipeline);
+    const posts = await PaginationHelper.paginateAggregate(
+      this.postModel,
+      pipeline,
+      { page: Number(page), limit: Number(limit) }
+    );
     return posts;
   }
 

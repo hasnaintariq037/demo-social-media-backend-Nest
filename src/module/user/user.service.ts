@@ -76,7 +76,6 @@ export class UserService {
   async followUser(targetUserId, req: Request) {
     // Convert current user ID to ObjectId
     const currentUserId = new mongoose.Types.ObjectId(req.user._id as string);
-    let currentUser = req.user;
     let message = "";
 
     const isAlreadyFollowed = await this.followingModel.findOne({
@@ -84,32 +83,39 @@ export class UserService {
       userId: currentUserId,
     });
 
-    if (isAlreadyFollowed) {
-      await Promise.all([
-        this.followerModel.deleteOne({
-          followerId: currentUserId,
-          userId: new mongoose.Types.ObjectId(targetUserId),
-        }),
-        this.followingModel.deleteOne({
-          followingId: new mongoose.Types.ObjectId(targetUserId),
-          userId: currentUserId,
-        }),
-      ]);
-      message = "You unfollowed";
-    } else {
-      await Promise.all([
-        this.followerModel.create({
-          followerId: currentUserId,
-          userId: new mongoose.Types.ObjectId(targetUserId),
-        }),
-        this.followingModel.create({
-          followingId: new mongoose.Types.ObjectId(targetUserId),
-          userId: currentUserId,
-        }),
-      ]);
-      message = "You followed";
+    const session = await mongoose.startSession();
+    try {
+      session.startTransaction();
+      if (isAlreadyFollowed) {
+        await Promise.all([
+          this.followerModel.deleteOne({
+            followerId: currentUserId,
+            userId: new mongoose.Types.ObjectId(targetUserId),
+          }),
+          this.followingModel.deleteOne({
+            followingId: new mongoose.Types.ObjectId(targetUserId),
+            userId: currentUserId,
+          }),
+        ]);
+        message = "You unfollowed";
+      } else {
+        await Promise.all([
+          this.followerModel.create({
+            followerId: currentUserId,
+            userId: new mongoose.Types.ObjectId(targetUserId),
+          }),
+          this.followingModel.create({
+            followingId: new mongoose.Types.ObjectId(targetUserId),
+            userId: currentUserId,
+          }),
+        ]);
+        message = "You followed";
+      }
+      await session.commitTransaction();
+      return { message };
+    } finally {
+      await session.endSession();
     }
-    return { message };
   }
 
   async searchUsers(name?: string) {

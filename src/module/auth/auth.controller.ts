@@ -11,7 +11,7 @@ import { createResponse } from "src/util/response.util";
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  @Post()
+  @Post("register")
   async register(
     @Body() requestBody: RegisterDTO,
     @Res({ passthrough: true }) res: Response
@@ -25,7 +25,7 @@ export class AuthController {
     return createResponse(data?.user, "User registered successfully");
   }
 
-  @Post("/login")
+  @Post("login")
   async login(
     @Body() requestBody: LoginDTO,
     @Res({ passthrough: true }) res: Response
@@ -39,26 +39,23 @@ export class AuthController {
     return createResponse(data?.user, "User logged in successfully");
   }
 
-  @Post("/logout")
+  @Post("logout")
   async logout(@Res({ passthrough: true }) res: Response) {
     res.clearCookie("accessToken");
 
     return createResponse("user logged out successfully");
   }
 
-  @Post("/forgot-password")
+  @Post("forgot-password")
   async forgotPassword(@Body() requestBody: ForgotPasswordDTO) {
     await this.authService.forgotPassword(requestBody);
 
     return createResponse("Password reset link sent to your email");
   }
 
-  @Post("/reset-password/:token")
-  async resetPassword(
-    @Body() requestBody: ResetPasswordDto,
-    @Param("token") token: string
-  ) {
-    await this.authService.resetPassword(requestBody, token);
+  @Post("reset-password")
+  async resetPassword(@Body() requestBody: ResetPasswordDto) {
+    await this.authService.resetPassword(requestBody);
 
     return createResponse("passwore updated successfully");
   }
