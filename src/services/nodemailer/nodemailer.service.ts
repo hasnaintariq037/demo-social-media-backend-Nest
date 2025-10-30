@@ -30,7 +30,7 @@ export class NodemailerService {
           html: `
             <p>You requested to reset your password.</p>
             <p>Click below to set a new one. The link expires at <strong>${expiryTime}</strong>.</p>
-            <a href="${resetUrl}" style="display:inline-block;background:#2563eb;color:#fff;padding:10px 15px;border-radius:6px;text-decoration:none">Reset Password</a>
+            <a href="${resetUrl}" target="_self" style="display:inline-block;background:#2563eb;color:#fff;padding:10px 15px;border-radius:6px;text-decoration:none">Reset Password</a>
             <p>If you didn’t request this, please ignore this email.</p>
           `,
         };

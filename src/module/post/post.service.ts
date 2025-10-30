@@ -5,13 +5,14 @@ import {
 } from "@nestjs/common";
 import { CreatePostDTO } from "./dto/createPost.dto";
 import { InjectModel } from "@nestjs/mongoose";
-import { Post } from "./schema/post.schrma";
+import { Post, PostDocument } from "./schema/post.schrma";
 import mongoose, { Model } from "mongoose";
 import { Request } from "express";
 import { CloudinaryService } from "src/services/cloudinary/cloudinary.service";
 import { SharePostDTO } from "./dto/sharePost.dto";
 import { Like } from "./schema/like.schema";
 import { Share } from "./schema/share.schema";
+import { PaginationHelper, PaginationResult } from "src/util/pagination";
 
 @Injectable()
 export class PostService {
@@ -83,20 +84,33 @@ export class PostService {
     if (!post) {
       throw new BadRequestException("Post not found");
     }
+
     const session = await mongoose.startSession();
+
     try {
       session.startTransaction();
       const [sharedPost] = await Promise.all([
-        await this.postModel.create({
-          media: [],
-          content: requestBody.content,
-          originalPost: post._id,
-          author: req.user._id,
-        }),
-        this.shareModel.create({
-          sharedPostId: post._id,
-          userId: req.user._id,
-        }),
+        this.postModel.create(
+          [
+            {
+              media: [],
+              content: requestBody.content,
+              originalPost: post._id,
+              author: req.user._id,
+            },
+          ],
+          { session }
+        ),
+
+        this.shareModel.create(
+          [
+            {
+              sharedPostId: post._id,
+              userId: req.user._id,
+            },
+          ],
+          { session }
+        ),
       ]);
       await session.commitTransaction();
       return sharedPost;
@@ -124,8 +138,15 @@ export class PostService {
     return message;
   }
 
-  async getAllPosts(req: Request) {
-    const { isMostLikedPosts, isFollowingPosts, isMostSharedPosts } = req.query;
+  async getAllPosts(req: Request): Promise<PaginationResult<PostDocument>> {
+    const {
+      isMostLikedPosts,
+      isFollowingPosts,
+      isMostSharedPosts,
+      userId,
+      page,
+      limit,
+    } = req.query;
     const user = req.user;
     const pipeline: any[] = [];
 
@@ -133,6 +154,10 @@ export class PostService {
       pipeline.push({
         $match: { author: { $in: user.following } },
       });
+    }
+
+    if (userId) {
+      pipeline.push({ $match: { author: userId } });
     }
 
     pipeline.push({
@@ -222,7 +247,11 @@ export class PostService {
         "originalPost.author.password": 0,
       },
     });
-    const posts = await this.postModel.aggregate(pipeline);
+    const posts = await PaginationHelper.paginateAggregate(
+      this.postModel,
+      pipeline,
+      { page: Number(page), limit: Number(limit) }
+    );
     return posts;
   }
 
