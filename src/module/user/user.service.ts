@@ -76,7 +76,6 @@ export class UserService {
   async followUser(targetUserId, req: Request) {
     // Convert current user ID to ObjectId
     const currentUserId = new mongoose.Types.ObjectId(req.user._id as string);
-    let currentUser = req.user;
     let message = "";
 
     const isAlreadyFollowed = await this.followingModel.findOne({

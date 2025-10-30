@@ -13,6 +13,7 @@ import { SharePostDTO } from "./dto/sharePost.dto";
 import { Like } from "./schema/like.schema";
 import { Share } from "./schema/share.schema";
 import { PaginationHelper, PaginationResult } from "src/util/pagination";
+import { Following } from "../user/schema/following.schema";
 
 @Injectable()
 export class PostService {
@@ -20,6 +21,8 @@ export class PostService {
     @InjectModel(Post.name) private postModel: Model<Post>,
     @InjectModel(Like.name) private likeModel: Model<Like>,
     @InjectModel(Share.name) private shareModel: Model<Share>,
+    @InjectModel(Following.name)
+    private readonly followingModel: Model<Following>,
     private readonly cloudinaryService: CloudinaryService
   ) {}
 
@@ -147,17 +150,33 @@ export class PostService {
       page,
       limit,
     } = req.query;
-    const user = req.user;
     const pipeline: any[] = [];
 
-    if (isFollowingPosts === "true" && user?.following?.length) {
-      pipeline.push({
-        $match: { author: { $in: user.following } },
-      });
+    if (isFollowingPosts === "true") {
+      // Get list of users the current user is following
+      const followingDocs = await this.followingModel
+        .find({
+          userId: new mongoose.Types.ObjectId(userId as string),
+        })
+        .select("followingId");
+
+      const followingIds = followingDocs.map((doc) => doc.followingId);
+
+      if (followingIds.length > 0) {
+        pipeline.push({
+          $match: { author: { $in: followingIds } },
+        });
+      } else {
+        pipeline.push({
+          $match: { _id: null },
+        });
+      }
     }
 
     if (userId) {
-      pipeline.push({ $match: { author: userId } });
+      pipeline.push({
+        $match: { author: new mongoose.Types.ObjectId(userId as string) },
+      });
     }
 
     pipeline.push({
@@ -165,8 +184,20 @@ export class PostService {
         from: "likes",
         localField: "_id",
         foreignField: "postId",
-        as: "likesData",
-        pipeline: [{ $project: { _id: 1 } }],
+        as: "likesDoc",
+        pipeline: [{ $project: { _id: 0, userId: 1 } }],
+      },
+    });
+
+    pipeline.push({
+      $addFields: {
+        likesData: {
+          $map: {
+            input: "$likesDoc",
+            as: "like",
+            in: "$$like.userId",
+          },
+        },
       },
     });
 
