@@ -44,46 +44,33 @@ export class PostService {
   }
 
   async deletePost(postId: string, req: Request) {
-    const post = await this.postModel.findOne({ _id: postId });
-    if (!post) {
-      throw new BadRequestException("Post not found");
-    }
+    const post = await this.postModel.findById(postId);
+    if (!post) throw new BadRequestException("Post not found");
 
     const isOwner = this.checkPostOwner(post.author, req.user._id);
-    if (!isOwner) {
+    if (!isOwner)
       throw new ForbiddenException("You are not the owner of this post");
-    }
 
     if (post.media?.length) {
       await this.cloudinaryService.deleteMultiple(post.media);
     }
-    const session = await this.postModel.db.startSession();
+
+    const session = await this.postModel.startSession();
     try {
-      session.startTransaction();
       await Promise.all([
-        this.likeModel.deleteMany([
-          {
-            postId: new mongoose.Types.ObjectId(postId),
-          },
-          { session },
-        ]),
-        this.shareModel.deleteMany([
-          {
-            sharedPostId: new mongoose.Types.ObjectId(postId),
-          },
-          { session },
-        ]),
-        this.postModel.deleteMany([
+        this.postModel.deleteMany(
           {
             $or: [
-              { _id: postId },
-              { originalPost: new mongoose.Types.ObjectId(postId) },
+              { _id: new mongoose.Types.ObjectId(postId) },
+              { originalPost: postId },
             ],
           },
-          { session },
-        ]),
+          { session }
+        ),
+        this.likeModel.deleteMany({ postId }, { session }),
+        this.shareModel.deleteMany({ sharedPostId: postId }, { session }),
       ]);
-      await session.commitTransaction();
+
       return { message: "Post and related likes deleted successfully" };
     } finally {
       await session.endSession();
