@@ -55,24 +55,23 @@ export class PostService {
       await this.cloudinaryService.deleteMultiple(post.media);
     }
 
-    const session = await this.postModel.startSession();
+    const session = await this.postModel.db.startSession();
     try {
       session.startTransaction();
-      await Promise.all([
-        this.postModel.deleteMany(
-          {
-            $or: [
-              { _id: new mongoose.Types.ObjectId(postId) },
-              { originalPost: postId },
-            ],
-          },
-          { session }
-        ),
-        this.likeModel.deleteMany({ postId }, { session }),
-        this.shareModel.deleteMany({ sharedPostId: postId }, { session }),
-      ]);
+      await this.postModel.deleteMany(
+        {
+          $or: [
+            { _id: new mongoose.Types.ObjectId(postId) },
+            { originalPost: postId },
+          ],
+        },
+        { session }
+      );
 
-      return { message: "Post and related likes deleted successfully" };
+      await this.likeModel.deleteMany({ postId }, { session });
+      await this.shareModel.deleteMany({ sharedPostId: postId }, { session });
+      await session.commitTransaction();
+      return { message: "Post deleted successfully" };
     } finally {
       await session.endSession();
     }
