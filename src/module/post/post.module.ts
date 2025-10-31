@@ -8,7 +8,7 @@ import { UserModule } from "src/module/user/user.module";
 import { ServicesModule } from "src/services/services.module";
 import { Like, LikeSchema } from "./schema/like.schema";
 import { Share, ShareSchema } from "./schema/share.schema";
-import { Following, FollowingSchema } from "../user/schema/following.schema";
+import { Follower, FollowerSchema } from "../user/schema/follower.schema";
 
 @Module({
   imports: [
@@ -16,7 +16,7 @@ import { Following, FollowingSchema } from "../user/schema/following.schema";
       { name: post.name, schema: PostSchema },
       { name: Like.name, schema: LikeSchema },
       { name: Share.name, schema: ShareSchema },
-      { name: Following.name, schema: FollowingSchema },
+      { name: Follower.name, schema: FollowerSchema },
     ]),
     AuthModule,
     UserModule,

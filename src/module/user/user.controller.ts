@@ -51,7 +51,7 @@ export class UserController {
   @UseGuards(AuthGuard)
   @Post(":targetUserId")
   async followUser(@Param("targetUserId") targetUser, @Req() req: Request) {
-    const { message } = await this.userService.followUser(targetUser, req);
+    const { message } = await this.userService.folllowUser(targetUser, req);
     return createResponse(message);
   }
 
