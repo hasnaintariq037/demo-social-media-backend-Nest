@@ -83,11 +83,7 @@ export class PostService {
       throw new BadRequestException("Post not found");
     }
 
-    console.log("before");
-
     const session = await this.postModel.db.startSession();
-
-    console.log(session);
 
     try {
       session.startTransaction();

@@ -48,7 +48,20 @@ export class PostController {
       req,
       files
     );
-    return createResponse(createdPost, "Post created successfully");
+    const plainPost = createdPost.toObject
+      ? createdPost.toObject()
+      : createdPost;
+
+    return createResponse(
+      {
+        ...(plainPost as any),
+        likesData: [],
+        sharesData: [],
+        likesCount: 0,
+        sharesCount: 0,
+      },
+      "Post created successfully"
+    );
   }
 
   @UseGuards(AuthGuard)
