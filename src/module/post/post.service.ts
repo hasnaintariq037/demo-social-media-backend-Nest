@@ -57,6 +57,7 @@ export class PostService {
 
     const session = await this.postModel.startSession();
     try {
+      session.startTransaction();
       await Promise.all([
         this.postModel.deleteMany(
           {
@@ -87,29 +88,26 @@ export class PostService {
 
     try {
       session.startTransaction();
-      const [sharedPost] = await Promise.all([
-        this.postModel.create(
-          [
-            {
-              media: [],
-              content: requestBody.content,
-              originalPost: post._id,
-              author: req.user._id,
-            },
-          ],
-          { session }
-        ),
-
-        this.shareModel.create(
-          [
-            {
-              sharedPostId: post._id,
-              userId: req.user._id,
-            },
-          ],
-          { session }
-        ),
-      ]);
+      const [sharedPost] = await this.postModel.create(
+        [
+          {
+            media: [],
+            content: requestBody.content,
+            originalPost: post._id,
+            author: req.user._id,
+          },
+        ],
+        { session }
+      );
+      await this.shareModel.create(
+        [
+          {
+            sharedPostId: post._id,
+            userId: req.user._id,
+          },
+        ],
+        { session }
+      );
       await session.commitTransaction();
       return sharedPost;
     } finally {
@@ -160,7 +158,6 @@ export class PostService {
         pipeline.push({
           $match: { author: { $in: followingIds } },
         });
-        console.log(pipeline, "pipeline");
       } else {
         pipeline.push({
           $match: { _id: null },
