@@ -119,4 +119,12 @@ export class UserService {
     const users = await this.userModel.find(filter);
     return users;
   }
+
+  async checkIsFollowing(targetUserId: string, currentUserId: string) {
+    const existing = await this.followerModel.exists({
+      userId: new mongoose.Types.ObjectId(targetUserId),
+      followerId: new mongoose.Types.ObjectId(currentUserId),
+    });
+    return existing;
+  }
 }
