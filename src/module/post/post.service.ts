@@ -117,16 +117,19 @@ export class PostService {
   async likePost(postId: string, req: Request) {
     let message = "";
     const userId = req.user._id;
-    const isAlreadyliked = await this.likeModel.findOne({
+
+    const isAlreadyLiked = await this.likeModel.findOne({
       postId: new mongoose.Types.ObjectId(postId),
+      userId: new mongoose.Types.ObjectId(userId),
     });
-    if (isAlreadyliked) {
-      await this.likeModel.deleteOne({ _id: isAlreadyliked._id });
+
+    if (isAlreadyLiked) {
+      await this.likeModel.deleteOne({ _id: isAlreadyLiked._id });
       message = "Unliked";
     } else {
       await this.likeModel.create({
         postId: new mongoose.Types.ObjectId(postId),
-        userId: userId,
+        userId: new mongoose.Types.ObjectId(userId),
       });
       message = "Liked";
     }
