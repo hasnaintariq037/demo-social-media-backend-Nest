@@ -51,7 +51,7 @@ export class UserController {
   @UseGuards(AuthGuard)
   @Post(":targetUserId")
   async followUser(@Param("targetUserId") targetUser, @Req() req: Request) {
-    const { message } = await this.userService.followUser(targetUser, req);
+    const { message } = await this.userService.folllowUser(targetUser, req);
     return createResponse(message);
   }
 
@@ -60,5 +60,25 @@ export class UserController {
   async searchUser(@Query("name") name: string) {
     const users = await this.userService.searchUsers(name);
     return createResponse(users, "users list fetched successfully");
+  }
+
+  @UseGuards(AuthGuard)
+  @Get(":targetUserId/is-following")
+  async isFollowing(
+    @Param("targetUserId") targetUserId: string,
+    @Req() req: Request
+  ) {
+    const currentUserId = req.user._id;
+
+    if (currentUserId.toString() === targetUserId) {
+      return { isFollowing: false };
+    }
+
+    const existing = await this.userService.checkIsFollowing(
+      targetUserId,
+      currentUserId
+    );
+
+    return { isFollowing: !!existing };
   }
 }

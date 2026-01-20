@@ -5,13 +5,15 @@ import {
 } from "@nestjs/common";
 import { CreatePostDTO } from "./dto/createPost.dto";
 import { InjectModel } from "@nestjs/mongoose";
-import { Post } from "./schema/post.schrma";
+import { Post, PostDocument } from "./schema/post.schrma";
 import mongoose, { Model } from "mongoose";
 import { Request } from "express";
 import { CloudinaryService } from "src/services/cloudinary/cloudinary.service";
 import { SharePostDTO } from "./dto/sharePost.dto";
 import { Like } from "./schema/like.schema";
 import { Share } from "./schema/share.schema";
+import { PaginationHelper, PaginationResult } from "src/util/pagination";
+import { Follower } from "../user/schema/follower.schema";
 
 @Injectable()
 export class PostService {
@@ -19,6 +21,7 @@ export class PostService {
     @InjectModel(Post.name) private postModel: Model<Post>,
     @InjectModel(Like.name) private likeModel: Model<Like>,
     @InjectModel(Share.name) private shareModel: Model<Share>,
+    @InjectModel(Follower.name) private folowerModel: Model<Follower>,
     private readonly cloudinaryService: CloudinaryService
   ) {}
 
@@ -41,34 +44,37 @@ export class PostService {
   }
 
   async deletePost(postId: string, req: Request) {
-    const post = await this.postModel.findOne({ _id: postId });
-    if (!post) {
-      throw new BadRequestException("Post not found");
-    }
+    const post = await this.postModel.findById(postId);
+    if (!post) throw new BadRequestException("Post not found");
 
     const isOwner = this.checkPostOwner(post.author, req.user._id);
-    if (!isOwner) {
+    if (!isOwner)
       throw new ForbiddenException("You are not the owner of this post");
-    }
 
     if (post.media?.length) {
       await this.cloudinaryService.deleteMultiple(post.media);
     }
-    await Promise.all([
-      this.likeModel.deleteMany({
-        postId: new mongoose.Types.ObjectId(postId),
-      }),
-      this.shareModel.deleteMany({
-        sharedPostId: new mongoose.Types.ObjectId(postId),
-      }),
-      this.postModel.deleteMany({
-        $or: [
-          { _id: postId },
-          { originalPost: new mongoose.Types.ObjectId(postId) },
-        ],
-      }),
-    ]);
-    return { message: "Post and related likes deleted successfully" };
+
+    const session = await this.postModel.db.startSession();
+    try {
+      session.startTransaction();
+      await this.postModel.deleteMany(
+        {
+          $or: [
+            { _id: new mongoose.Types.ObjectId(postId) },
+            { originalPost: postId },
+          ],
+        },
+        { session }
+      );
+
+      await this.likeModel.deleteMany({ postId }, { session });
+      await this.shareModel.deleteMany({ sharedPostId: postId }, { session });
+      await session.commitTransaction();
+      return { message: "Post deleted successfully" };
+    } finally {
+      await session.endSession();
+    }
   }
 
   async sharePost(postId: string, requestBody: SharePostDTO, req: Request) {
@@ -76,45 +82,94 @@ export class PostService {
     if (!post) {
       throw new BadRequestException("Post not found");
     }
-    const [sharedPost] = await Promise.all([
-      await this.postModel.create({
-        media: [],
-        content: requestBody.content,
-        originalPost: post._id,
-        author: req.user._id,
-      }),
-      this.shareModel.create({ sharedPostId: post._id, userId: req.user._id }),
-    ]);
-    return sharedPost;
+
+    const session = await this.postModel.db.startSession();
+
+    try {
+      session.startTransaction();
+      const [sharedPost] = await this.postModel.create(
+        [
+          {
+            media: [],
+            content: requestBody.content,
+            originalPost: post._id,
+            author: req.user._id,
+          },
+        ],
+        { session }
+      );
+      await this.shareModel.create(
+        [
+          {
+            sharedPostId: post._id,
+            userId: req.user._id,
+          },
+        ],
+        { session }
+      );
+      await session.commitTransaction();
+      return sharedPost;
+    } finally {
+      await session.endSession();
+    }
   }
 
   async likePost(postId: string, req: Request) {
     let message = "";
     const userId = req.user._id;
-    const isAlreadyliked = await this.likeModel.findOne({
+
+    const isAlreadyLiked = await this.likeModel.findOne({
       postId: new mongoose.Types.ObjectId(postId),
+      userId: new mongoose.Types.ObjectId(userId),
     });
-    if (isAlreadyliked) {
-      await this.likeModel.deleteOne({ _id: isAlreadyliked._id });
+
+    if (isAlreadyLiked) {
+      await this.likeModel.deleteOne({ _id: isAlreadyLiked._id });
       message = "Unliked";
     } else {
       await this.likeModel.create({
         postId: new mongoose.Types.ObjectId(postId),
-        userId: userId,
+        userId: new mongoose.Types.ObjectId(userId),
       });
       message = "Liked";
     }
     return message;
   }
 
-  async getAllPosts(req: Request) {
-    const { isMostLikedPosts, isFollowingPosts, isMostSharedPosts } = req.query;
-    const user = req.user;
+  async getAllPosts(req: Request): Promise<PaginationResult<PostDocument>> {
+    const {
+      isMostLikedPosts,
+      isFollowingPosts,
+      isMostSharedPosts,
+      userId,
+      page,
+      limit,
+    } = req.query;
     const pipeline: any[] = [];
 
-    if (isFollowingPosts === "true" && user?.following?.length) {
+    if (isFollowingPosts === "true") {
+      const followingDocs = await this.folowerModel
+        .find({
+          followerId: req.user._id,
+        })
+        .select("userId");
+
+      const followingIds = followingDocs.map((doc) => doc.userId);
+
+      if (followingIds.length > 0) {
+        pipeline.push({
+          $match: { author: { $in: followingIds } },
+        });
+      } else {
+        pipeline.push({
+          $match: { _id: null },
+        });
+      }
+    }
+
+    if (userId) {
       pipeline.push({
-        $match: { author: { $in: user.following } },
+        $match: { author: new mongoose.Types.ObjectId(userId as string) },
       });
     }
 
@@ -123,8 +178,20 @@ export class PostService {
         from: "likes",
         localField: "_id",
         foreignField: "postId",
-        as: "likesData",
-        pipeline: [{ $project: { _id: 1 } }],
+        as: "likesDoc",
+        pipeline: [{ $project: { _id: 0, userId: 1 } }],
+      },
+    });
+
+    pipeline.push({
+      $addFields: {
+        likesData: {
+          $map: {
+            input: "$likesDoc",
+            as: "like",
+            in: "$$like.userId",
+          },
+        },
       },
     });
 
@@ -205,7 +272,11 @@ export class PostService {
         "originalPost.author.password": 0,
       },
     });
-    const posts = await this.postModel.aggregate(pipeline);
+    const posts = await PaginationHelper.paginateAggregate(
+      this.postModel,
+      pipeline,
+      { page: Number(page), limit: Number(limit) }
+    );
     return posts;
   }
 
